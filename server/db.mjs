@@ -134,12 +134,22 @@ export function listSources(db) {
 /** Fires for a source and year range, as compact columns (about 40% the size of row objects). */
 export function queryFires(db, { source, from = 0, to = 9999 }) {
   const rows = db.prepare(`
-    SELECT fire_id, ignition_date, size_ha, latitude, longitude, general_cause, fire_name
+    SELECT fire_id, ignition_date, size_ha, latitude, longitude, general_cause, fire_name, out_date, protection_zone
     FROM fires WHERE source = ? AND year BETWEEN ? AND ? ORDER BY ignition_date, fire_id`).all(source, from, to);
-  const cols = { fire_id: [], ignition_date: [], size_ha: [], latitude: [], longitude: [], general_cause: [], fire_name: [] };
+  const cols = { fire_id: [], ignition_date: [], size_ha: [], latitude: [], longitude: [], general_cause: [], fire_name: [], out_date: [], protection_zone: [] };
   for (const r of rows) for (const k in cols) cols[k].push(r[k]);
   return { count: rows.length, columns: cols };
 }
+
+/** Every fire of one source as plain row objects (Search runs over these on the server). */
+export function allFires(db, source) {
+  return db.prepare(`SELECT fire_id, ignition_date, size_ha, latitude, longitude, general_cause, fire_name, out_date, protection_zone
+    FROM fires WHERE source = ? ORDER BY ignition_date, fire_id`).all(source).map((r) => ({ ...r }));
+}
+
+/** CNFDB fire ids that have a True Spread Replay. */
+export const spreadCnfdbIds = (db) =>
+  new Set(db.prepare('SELECT cnfdb_fire_id FROM spread_fires WHERE cnfdb_fire_id IS NOT NULL').all().map((r) => r.cnfdb_fire_id));
 
 /** Replace every spread fire (and its hotspots) in one transaction and record the run. */
 export function replaceSpread(db, fires, { input, rowsRead, rejects = {} } = {}) {

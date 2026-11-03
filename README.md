@@ -9,6 +9,7 @@ Saskatchewan Public Safety Agency (SPSA) and Natural Resources Canada.
 | **Replay** | Plays fire seasons day by day. Each ignition flashes, grows to its reported size and cools to a burn scar. **Lightning storms** strike first: a bolt lands at every lightning-caused fire, and clusters get a drifting storm cell. Turn on **Hear the season** (🔊 or `M`) and every ignition plays a note. Scrub the season timeline, change speed, filter by cause or size. |
 | **Spread** | True spread replay. Pick one of Saskatchewan's largest fires and watch it grow day by day, as satellites saw it, inside its real NBAC burned-area perimeter. Hot pixels flare as detections land, a glowing front (coloured by spread rate) sweeps across and cools to a char scar, embers drift with the day's recorded wind, and fronts merging slow the replay down. A director camera follows the fire. |
 | **Explore** | 3D hexagon columns (area burned), a heatmap, or every burn drawn at its true area, across any range of years. Optional orbit camera. |
+| **Search** | Find any fire in the record by anything it holds. Type plainly (`lightning near La Ronge over 1000 ha in july 2015`, `megafires 1980s`, `human since 2010 burned longer than 3 months`) and the words become filter chips; other words search fire names. Faceted filters show what each choice would return: cause, month started, size class (A–E) and hectare bounds, how long it burned, distance from an SPSA community, a dropped pin or a drawn box, years (brush the histogram), named fires, fires with a spread replay. Matches ignite on the map in the order they started; the rest of the record stays as dust. Sort, click through to the detail card, **Replay these** or **Explore in 3D**, export CSV or GeoJSON, open the same search from the API, or copy a link that reopens it. |
 | **Live** | Active incidents (SPSA layer, then CWFIS satellite hotspots, then a labelled simulation), satellite fire perimeters, live SPSA community locations, and a looping animation of the last 3 hours of **Canadian Lightning Detection Network** flash density. Flags communities within an adjustable alert radius. |
 | **Story** | A guided tour whose numbers are all computed from the loaded data: the biggest season, a true spread replay of its largest fire, lightning vs. human causes, the top 1% of fires, the live picture. |
 | **▶ Watch** | **Emberline Presents**, the same story as a narrated film (about 2½ minutes) that plays inside the live app. A synthetic voice (local Kokoro, see below) reads each chapter while the camera flies, the replay starts on the word "Watch", numbers count up and captions run. A wood fire crackles quietly underneath and ducks under the voice (the flame button mutes it). Pause at any moment (`Space`) and the map is yours to explore from that view; `→` skips a chapter. Also on the intro screen as **Watch the film**. |
@@ -20,7 +21,7 @@ azimuth, a day/night terminator that sweeps across the province, a sky that turn
 fires that glow brighter after dark. The **Scene** panel switches between an accelerated day cycle,
 day, golden hour and night, and sets the relief exaggeration.
 
-Keyboard: `Space` play/pause · `←`/`→` step a week (a day in Spread) · `1`–`5` modes · `W` watch the film · `M` sound · `Esc` close.
+Keyboard: `Space` play/pause · `←`/`→` step a week (a day in Spread) · `1`–`5` modes · `/` search · `W` watch the film · `M` sound · `Esc` close.
 
 ---
 
@@ -92,6 +93,8 @@ index.html, src/          front end (MapLibre GL + deck.gl from CDN, ES modules,
   main.js                 map, animation loop, modes, UI
   spread-mode.js          True Spread Replay: burn field, front, detections, embers, director camera
   spread.js               fire-growth algorithms shared with the loader (projection, raster, arrival time, merges)
+  search.js               query model shared with /api/search: plain-language parser, facets, URL params, CSV/GeoJSON
+  search-mode.js          Search: search box and chips, faceted filters, year brush, results list, map reveal, pin/box tools
   charts.js               animated SVG/canvas charts (cause donut, fire clock, season bars, timeline)
   story.js                guided story; all figures computed from the data, with a spoken line and cues per chapter
   documentary.js          Emberline Presents: the narrated film (clips, captions, word-timed cues, pause/skip)
@@ -141,6 +144,7 @@ tests/                    node --test suites
 |---|---|
 | `GET /api/sources` | Loaded sources with counts, year span and load time |
 | `GET /api/fires?source=cnfdb&from=1981&to=2025` | Fires as compact columns (gzip, about 400 KB for all of CNFDB) |
+| `GET /api/search?q=lightning near La Ronge over 1000 ha` | Search the record with the same query language as Search mode. `q=` takes plain language (community names resolve against the live SPSA layer); structured parameters: `from`, `to`, `m` (months 1–12), `cause`, `class` (A–E), `min`/`max` (ha), `dur`, `dmin`/`dmax` (days burning), `near=lat,lon,km`, `bbox=w,s,e,n`, `named=1`, `spread=1`, `zone`, `sort` (size, date, days, name, km), `dir`. `format=json` (default; `limit` ≤ 5000, `offset`, facet counts included), `csv` or `geojson` (all matches) |
 | `GET /api/live[?refresh]` | Active incidents + satellite perimeters + SPSA communities (cached for 5 minutes) |
 | `GET /api/live/history` | Stored live snapshots |
 | `GET /api/spread` | Fires with a spread replay (no geometry) |

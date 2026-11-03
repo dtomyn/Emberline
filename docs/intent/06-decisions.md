@@ -75,3 +75,13 @@ Each entry: the decision, the alternatives, and why. Add new entries at the bott
   The IRISIdeas films use the same approach (Playwright + Edge + imageio-ffmpeg), and the same Python.
 - **Sound:** the YouTube film has a low synthesized pad as well as the fire bed, because it plays
   without the app's context and needs to carry on its own; the in-app documentary keeps fire only.
+
+### Search: one query model, run in the browser and on the server
+- **Alternatives:** filter with SQL on each keystroke; browser-only filtering; a search library.
+- **Why:** the whole record (about 27k fires) is already in the browser for Replay and Explore, so
+  searching it there is instant and works with static hosting. `src/search.js` holds the query model,
+  the plain-language parser, faceting and exports once, and the server runs the same module for
+  `/api/search`, so the API, the UI and shared links can never disagree. No dependencies; the
+  parser is small rules over tokens, tested in `tests/search.test.mjs`.
+- **Facets:** each is counted with every other filter applied (one pass), so a chip shows what
+  choosing it would return rather than a static total.

@@ -15,7 +15,7 @@ const source = opt('source', 'cnfdb');
 const out = opt('out', 'data/fires.json');
 
 const db = openDb();
-const rows = db.prepare(`SELECT fire_id, ignition_date, size_ha, latitude, longitude, general_cause, fire_name
+const rows = db.prepare(`SELECT fire_id, ignition_date, size_ha, latitude, longitude, general_cause, fire_name, out_date, protection_zone
   FROM fires WHERE source = ? AND year BETWEEN ? AND ? ORDER BY ignition_date`).all(source, Number(opt('from', 0)), Number(opt('to', 9999)));
 writeFileSync(out, '[\n' + rows.map((r) => JSON.stringify({ ...r })).join(',\n') + '\n]\n');
 console.log(`Exported ${rows.length.toLocaleString()} '${source}' fires → ${out}`);

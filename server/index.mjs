@@ -4,6 +4,9 @@
  *
  *   GET /api/sources               sources loaded in the DB (counts, year span, load time)
  *   GET /api/fires?source=&from=&to=  historical fires as compact columns
+ *   GET /api/search?…              search the record (same query language as Search mode: q= takes plain
+ *                                  language, plus from, to, m, cause, class, min, max, dur, dmin, dmax, near,
+ *                                  bbox, named, spread, zone, sort, dir); format=json|csv|geojson, limit, offset
  *   GET /api/live                  active incidents (SPSA → CWFIS hotspots → simulation), satellite
  *                                  perimeters and SPSA communities;
  *                                  real (non-simulated) pulls are stored in live_snapshots
@@ -21,7 +24,8 @@ import { createServer } from 'node:http';
 import { readFile, stat } from 'node:fs/promises';
 import { gzipSync } from 'node:zlib';
 import { extname, join, normalize, resolve, sep } from 'node:path';
-import { openDb, listSources, queryFires, listSpreadFires, getSpreadFire, provenanceInfo, DB_PATH } from './db.mjs';
+import { openDb, listSources, queryFires, listSpreadFires, getSpreadFire, provenanceInfo, allFires, spreadCnfdbIds, DB_PATH } from './db.mjs';
+import { prepare, search, fromParams, parseText, mergeQuery, describe, toRows, toCSV, toGeoJSON } from '../src/search.js';
 import { sourceById, pingSource } from '../src/provenance.js';
 import { loadActiveIncidents, loadCommunities, loadPerimeters } from '../src/services/live.js';
 import { enrich } from '../src/data.js';
@@ -75,6 +79,52 @@ async function getLive(force = false) {
   return live.body;
 }
 
+// Search runs over every fire of a source held in memory (prepared once; about 27k rows for CNFDB)
+const searchCache = new Map();
+function searchable(source) {
+  if (!searchCache.has(source)) searchCache.set(source, { fires: prepare(allFires(db, source)), spreadIds: spreadCnfdbIds(db) });
+  return searchCache.get(source);
+}
+// Community names in q= ("near La Ronge") resolve against the live SPSA layer, fetched at most hourly
+let communityCache = null;
+async function communities() {
+  if (live?.body.communities?.length) return live.body.communities;
+  if (!communityCache || Date.now() - communityCache.at > 3600_000) {
+    communityCache = { at: Date.now(), list: (await loadCommunities().catch(() => ({ communities: [] }))).communities };
+  }
+  return communityCache.list;
+}
+
+async function handleSearch(req, res, url) {
+  const p = url.searchParams;
+  const sources = listSources(db);
+  const source = p.get('source') ?? sources[0]?.source;
+  if (!source || !sources.some((s) => s.source === source)) return send(req, res, 404, { error: `No data for source '${source ?? ''}'.` });
+  const base = fromParams(p);
+  const parsed = base.text ? parseText(base.text, { communities: /\b(near|around|close)\b|near:/i.test(base.text) ? await communities() : [] }) : null;
+  const q = parsed ? mergeQuery({ ...base, text: '' }, { ...parsed.patch, text: parsed.text }) : base;
+  const { fires, spreadIds } = searchable(source);
+  const r = search(fires, q, { spreadIds });
+  const format = p.get('format') ?? 'json';
+  const stamp = new Date().toISOString().slice(0, 10);
+  if (format === 'csv') {
+    return send(req, res, 200, toCSV(r.results, { near: Boolean(r.query.near) }), 'text/csv; charset=utf-8',
+      { 'Content-Disposition': `attachment; filename="emberline-search-${stamp}.csv"` });
+  }
+  const understood = describe(r.query).map((x) => x.text);
+  if (format === 'geojson') {
+    return send(req, res, 200, toGeoJSON(r.results, { source, query: understood }), 'application/geo+json; charset=utf-8',
+      { 'Content-Disposition': `attachment; filename="emberline-search-${stamp}.geojson"` });
+  }
+  const offset = Math.max(0, Number(p.get('offset')) || 0);
+  const limit = Math.min(5000, Math.max(0, Number(p.get('limit') ?? 100) || 0));
+  const facets = Object.fromEntries(Object.entries(r.facets).map(([k, m]) => [k, Object.fromEntries([...m].map(([v, e]) => [v, { count: e.count, ha: Math.round(e.ha) }]))]));
+  return send(req, res, 200, {
+    source, query: r.query, understood, notes: parsed?.notes ?? [], count: r.count, ha: Math.round(r.ha), offset, limit,
+    results: toRows(r.results.slice(offset, offset + limit)), facets,
+  });
+}
+
 async function handleApi(req, res, url) {
   const p = url.pathname;
   if (p === '/api/sources') return send(req, res, 200, { db: DB_PATH.split(sep).slice(-2).join('/'), sources: listSources(db) });
@@ -87,6 +137,7 @@ async function handleApi(req, res, url) {
     const from = Number(url.searchParams.get('from') ?? 0), to = Number(url.searchParams.get('to') ?? 9999);
     return send(req, res, 200, firesFor(source, from, to));
   }
+  if (p === '/api/search') return handleSearch(req, res, url);
   if (p === '/api/live') return send(req, res, 200, await getLive(url.searchParams.has('refresh')));
   if (p === '/api/live/history') {
     return send(req, res, 200, db.prepare('SELECT id, fetched_at, source, label, incident_count FROM live_snapshots ORDER BY id DESC LIMIT 500').all());

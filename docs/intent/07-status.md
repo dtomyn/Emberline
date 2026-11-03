@@ -7,6 +7,7 @@ As of 2026-11-03.
 | Feature | Idea # in [IDEAS.md](../IDEAS.md) |
 |---|---|
 | Replay, Explore, Live, Story modes; fire detail cards | (core) |
+| Search: plain-language and faceted search, `/api/search`, CSV/GeoJSON export, shareable links | (core) |
 | True Spread Replay | 1 |
 | Emberline Presents: narrated film with Kokoro voice and fire sound bed | 2 (core) |
 | Lightning Storms (history and live) | 4 |
@@ -25,7 +26,8 @@ As of 2026-11-03.
 
 The backlog and its suggested build order are in [IDEAS.md](../IDEAS.md). Next in line:
 **Your Community's Fire Story** (idea 3). Other candidates: fire-weather (FWI) overlays, a decade
-comparison view, shareable URL state beyond the mode hash, and `live_snapshots` history playback.
+comparison view, shareable URL state for the other modes (Search already keeps its query in the URL),
+and `live_snapshots` history playback.
 
 Every new idea must meet the same bar as the built ones: striking *and* real, public data
 loaded by a script, and anything simulated or illustrative labelled.

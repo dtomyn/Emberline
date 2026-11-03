@@ -134,6 +134,21 @@ real detections, which the panel and About dialog say. Keep that wording if you 
   overlay eats every click (this hit `.sources` and `.doc-card`).
 - Voice clips come from `scripts/kokoro-voice.py` into `data/film/voice/`; change a line and only it is remade.
 
+## Search mode: built
+
+- `src/search.js` is the one query model (parser, filters, facets, URL params, CSV/GeoJSON). The browser runs it
+  over the loaded record and `/api/search` runs the same module on the server; change it in one place and add a
+  case to `tests/search.test.mjs`. A new filter needs: `emptyQuery`, `normalizeQuery`, `dimensions`, `describe`,
+  `toParams`/`fromParams`, and (if it has words) `parseText`.
+- Parser lookup tables are null-prototype (`dict`), so "constructor" is never a month or a sort key. Keep that.
+- Facets count each value with every *other* filter applied. Size bounds share the class facet and day bounds
+  the duration facet.
+- Community names ("near La Ronge") resolve against the live SPSA layer; without it, pins and boxes still work and
+  the hint says why names don't. Duration is `OUT_DATE − REP_DATE`; out-before-start is treated as unknown.
+- `/api/fires` now also returns `out_date` and `protection_zone` (CNFDB `PROTZONE`, sparse).
+- "Replay these" / "Explore in 3D" set `state.searchFilter` (a compiled predicate) in `main.js`; the
+  "Showing a search" panel clears or edits it. The hash `#search?…` holds the query.
+
 ## Open threads / ideas not yet done
 
 The full idea backlog, with verified public data sources and a suggested build order, is in

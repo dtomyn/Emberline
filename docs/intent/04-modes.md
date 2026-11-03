@@ -27,6 +27,22 @@ Each entry gives what the feature is **for**, what it must **show**, and what it
 - **Shows:** 3D hexagon columns of area burned, a heatmap, or every burn at true area, across
   any range of years, with an optional orbit camera.
 
+## Search
+
+- **For:** turning the atlas into a tool a specialist can query: "which lightning fires over
+  1,000 ha started within 50 km of La Ronge since 2000, and how long did they burn?" The other
+  modes show the record; Search answers questions about it.
+- **Shows:** a plain-language search box whose recognized words become removable chips (other
+  words search fire names); faceted filters whose counts show what each choice would return
+  (cause, month, size class and bounds, duration, place by community / pin / drawn box, years
+  by brushing a histogram, named fires, spread replays, protection zone); a sortable result list;
+  matches igniting on the map in the order they started against the whole record as dust.
+  Results feed Replay and Explore, export to CSV and GeoJSON, open from `/api/search`, and
+  live in the URL so a link reopens the exact search.
+- **Never:** invents a field. Every filter is a column the record holds or a direct derivation
+  (size class from hectares, duration from report and out dates, distance from coordinates).
+  Fires without an out date drop out of duration filters, and the panel says how many.
+
 ## Live
 
 - **For:** showing that the app is connected to today, not just a history book, and putting

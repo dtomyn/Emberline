@@ -41,6 +41,7 @@
       <button role="tab" data-mode="timeline" aria-selected="true"><kbd>1</kbd>Replay</button>
       <button role="tab" data-mode="spread"><kbd>2</kbd>Spread</button>
       <button role="tab" data-mode="explore"><kbd>3</kbd>Explore</button>
+      <button role="tab" data-mode="search"><kbd>/</kbd>Search</button>
       <button role="tab" data-mode="live"><kbd>4</kbd>Live<i class="live-dot"></i></button>
       <button role="tab" data-mode="story"><kbd>5</kbd>Story</button>
     </nav>
@@ -56,9 +57,70 @@
       <div class="date-day" id="date-day">April 1</div>
     </div>
 
-    <div class="group" data-show="timeline explore">
+    <div class="group" data-show="timeline explore search">
       <label class="glabel" for="source">Dataset</label>
       <select id="source" class="source"></select>
+    </div>
+
+    <div class="group sx-applied" data-show="timeline explore" id="sx-applied" hidden>
+      <label class="glabel">Showing a search <output id="sx-applied-n"></output></label>
+      <p class="sx-applied-q" id="sx-applied-q"></p>
+      <div class="sx-applied-btns"><button class="ghost small" id="sx-applied-edit">Edit search</button><button class="ghost small" id="sx-applied-clear">Show all fires</button></div>
+    </div>
+
+    <!-- Search (src/search-mode.js) -->
+    <div class="group sx-top" data-show="search">
+      <label class="sx-box" for="sx-input">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L21 21"/></svg>
+        <input type="search" id="sx-input" placeholder="lightning near La Ronge over 1000 ha" autocomplete="off" spellcheck="false" aria-label="Search the fire record" aria-describedby="sx-hint" />
+      </label>
+      <div class="sx-chips" id="sx-chips" aria-live="polite"></div>
+      <p class="sx-hint" id="sx-hint"></p>
+      <div class="sx-examples" id="sx-examples"></div>
+    </div>
+    <div class="group" data-show="search">
+      <label class="glabel">Cause</label>
+      <div class="chips sx-cause-chips" id="sx-causes"></div>
+    </div>
+    <div class="group" data-show="search">
+      <label class="glabel">Month started</label>
+      <div class="sx-months" id="sx-months"></div>
+    </div>
+    <div class="group" data-show="search">
+      <label class="glabel">Size class</label>
+      <div class="sx-frows" id="sx-classes"></div>
+      <div class="sx-pair"><input type="number" id="sx-min" min="0" step="any" placeholder="min ha" aria-label="Minimum size in hectares" /><span>to</span><input type="number" id="sx-max" min="0" step="any" placeholder="max ha" aria-label="Maximum size in hectares" /></div>
+    </div>
+    <div class="group" data-show="search">
+      <label class="glabel">Burned for <output>report → out date</output></label>
+      <div class="sx-frows" id="sx-durs"></div>
+      <div class="sx-pair"><input type="number" id="sx-dmin" min="0" step="1" placeholder="min days" aria-label="Minimum days burning" /><span>to</span><input type="number" id="sx-dmax" min="0" step="1" placeholder="max days" aria-label="Maximum days burning" /></div>
+      <p class="hint" id="sx-dur-note"></p>
+    </div>
+    <div class="group" data-show="search">
+      <label class="glabel">Place <output id="sx-radius-out">50 km</output></label>
+      <input class="search" id="sx-place" list="sx-communities" placeholder="Near a community…" autocomplete="off" aria-label="Near a community" />
+      <datalist id="sx-communities"></datalist>
+      <input type="range" id="sx-radius" min="5" max="300" step="5" value="50" aria-label="Search radius in kilometres" />
+      <div class="sx-tools">
+        <button class="ghost small" id="sx-pin" title="Click the map to search around a point">📍 Drop pin</button>
+        <button class="ghost small" id="sx-draw" title="Drag on the map to search inside a box">▭ Draw box</button>
+        <button class="ghost small" id="sx-view" title="Search inside the area on screen">Map view</button>
+      </div>
+      <p class="hint" id="sx-place-note"></p>
+    </div>
+    <div class="group" data-show="search">
+      <label class="glabel">Years</label>
+      <div class="sx-pair"><input type="number" id="sx-from" min="1900" max="2100" placeholder="from" aria-label="From year" /><span>to</span><input type="number" id="sx-to" min="1900" max="2100" placeholder="to" aria-label="To year" /></div>
+      <label class="toggle"><input type="checkbox" id="sx-named" /> <span>Named fires only</span></label>
+      <label class="toggle"><input type="checkbox" id="sx-spread" /> <span>Has a True Spread Replay</span></label>
+    </div>
+    <div class="group" data-show="search" id="sx-zone-group" hidden>
+      <label class="glabel">Protection zone</label>
+      <div class="chips" id="sx-zones"></div>
+    </div>
+    <div class="group" data-show="search">
+      <button class="ghost small" id="sx-reset">Reset search</button>
     </div>
 
     <div class="group" data-show="explore">
@@ -160,6 +222,32 @@
     </div>
     <div class="largest" id="largest"></div>
     <div class="threats" id="threats" data-show="live"></div>
+
+    <section class="sx-results" data-show="search" aria-label="Search results">
+      <div class="kpis">
+        <div class="kpi"><span class="kv" id="sx-k-count">0</span><span class="kl">fires found</span></div>
+        <div class="kpi hot"><span class="kv" id="sx-k-ha">0</span><span class="kl">hectares burned</span></div>
+        <div class="kpi"><span class="kv" id="sx-share">–</span><span class="kl">of all area burned</span></div>
+      </div>
+      <p class="sx-sentence" id="sx-sentence"></p>
+      <div class="chart wide">
+        <h3>By year <small><output id="sx-hist-out"></output> <button class="sx-link" id="sx-hist-clear">all</button></small></h3>
+        <div class="sx-hist" id="sx-hist" role="group" aria-label="Fires per year. Click a year, drag across years, or shift-click to extend."></div>
+        <p class="sx-hist-tip" id="sx-hist-tip"></p>
+      </div>
+      <div class="sx-list-head">
+        <select id="sx-sort" class="source" aria-label="Sort results">
+          <option value="size">Largest</option><option value="date">Date</option><option value="days">Longest burning</option><option value="name">Name</option><option value="km">Distance</option>
+        </select>
+        <button class="icon-btn sx-dir" id="sx-dir" aria-label="Flip sort order">↓</button>
+        <button class="ghost small" id="sx-fit" title="Fit the map to the results">⤢ Fit map</button>
+      </div>
+      <div class="sx-list" id="sx-list" aria-live="polite"></div>
+      <div class="sx-actions">
+        <div class="sx-use"><button class="cta small" id="sx-replay">▶ Replay these</button><button class="ghost small" id="sx-explore">Explore in 3D</button></div>
+        <div class="sx-export"><span class="muted">Export</span><button class="sx-link" id="sx-csv">CSV</button><button class="sx-link" id="sx-geojson">GeoJSON</button><button class="sx-link" id="sx-api" title="The same search from the Emberline API">API ↗</button><button class="sx-link" id="sx-link">Copy link</button></div>
+      </div>
+    </section>
 
     <section class="spread-stats" data-show="spread">
       <p class="spread-kicker" id="spread-kicker"></p>
@@ -274,12 +362,13 @@
     <p><b>Live layers.</b> Community locations are fetched live from SPSA's public ArcGIS server (<code>gis.saskatchewan.ca/arcgis/rest/services/SPSA/Communities</code>). Active incidents come from an SPSA layer when one is published, then from the CWFIS national feed, and otherwise from a clearly labelled simulation.</p>
     <p><b>True spread replay.</b> Final burned-area perimeters come from NRCan's National Burned Area Composite (NBAC). Satellite hotspots (MODIS 1 km, VIIRS 375 m) come from the CWFIS archive. Each detection inside a perimeter seeds an arrival-time grid, and the glowing front is the line where that arrival time equals the moment shown. Between detections the shape is interpolated. Ember drift follows the wind recorded with each day's hotspots. Load it with <code>npm run load:spread</code>.</p>
     <p><b>Lightning storms.</b> Each lightning-caused fire in the record gets a bolt where it started. Ignitions within 1 day and 60 km are grouped into a storm with a drifting cell. Dates and places are recorded; the hour of each strike and the cell's shape are illustrative. Live mode loops the last 3 hours of Canadian Lightning Detection Network flash density from ECCC MSC GeoMet.</p>
+    <p><b>Search.</b> Searches the loaded record by its own fields: name, report date, cause, size and location, plus what follows directly from them: size class (A ≤ 0.1 ha, B to 4, C to 40, D to 200, E above), days burning (out date minus report date; fires without an out date are left out of that filter) and distance from a community in SPSA's live layer. Plain words become filters; anything else searches fire names. The same query runs on the server at <code>/api/search</code>, and exports carry exactly what you see.</p>
     <p><b>Terrain and sky.</b> Elevation from public Terrarium tiles (AWS Open Data). Shading and the day/night line follow the real sun position for the date shown, in Saskatchewan time (CST, no daylight saving). The cycle clock is accelerated.</p>
     <p><b>Hear the season.</b> Each ignition plays a note: pitch from size (bigger is lower), timbre from cause (lightning is a bell, human a wooden mallet), stereo position from longitude. The crackle and rumble follow how much is burning.</p>
     <p class="muted">Burn circles have the same area as the reported fire size; they are not perimeters. Synthetic "mock" data, when selected, is generated by <code>scripts/generate-mock.mjs</code>.</p>
     <p><b>Emberline Presents.</b> The narrated film (<b>▶ Watch</b>) plays the guided story inside the live app. Every spoken figure is computed from the loaded data. The narration is a <b>synthetic voice</b>: Kokoro (<code>af_heart</code>), generated locally by <code>npm run make:voice</code>, or the browser's speech voice when no matching clips exist. The spread chapter's front is interpolated between real detections. Underneath, a quiet wood fire crackles, synthesized in the browser from noise (no recordings). It burns livelier in the big chapters, and its louder pops are the chapter's largest real fires in the order they started (bigger fires knock deeper, west on the left). The flame button mutes it.</p>
     <p><button class="sources-btn" id="about-sources" type="button"><i aria-hidden="true"></i>Read the rings: every source, request and licence</button></p>
-    <p class="muted">Keyboard: <kbd>Space</kbd> play/pause · <kbd>←</kbd>/<kbd>→</kbd> step a week · <kbd>1</kbd>–<kbd>5</kbd> modes · <kbd>W</kbd> watch the film · <kbd>M</kbd> sound · <kbd>S</kbd> sources · <kbd>Esc</kbd> close</p>
+    <p class="muted">Keyboard: <kbd>Space</kbd> play/pause · <kbd>←</kbd>/<kbd>→</kbd> step a week · <kbd>1</kbd>–<kbd>5</kbd> modes · <kbd>/</kbd> search · <kbd>W</kbd> watch the film · <kbd>M</kbd> sound · <kbd>S</kbd> sources · <kbd>Esc</kbd> close</p>
     <form method="dialog"><button class="cta small">Close</button></form>
   </dialog>
 

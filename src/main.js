@@ -13,6 +13,8 @@ import { createLightning, createLiveLightning, buildStorms } from './lightning.j
 import { createSonifier } from './sonify.js';
 import { createDocumentary } from './documentary.js';
 import { createSourcesView } from './sources-view.js';
+import { createSearchMode } from './search-mode.js';
+import { prepare as prepareSearch, compile as compileSearch } from './search.js';
 
 const { MapboxOverlay, ScatterplotLayer, HeatmapLayer, HexagonLayer, PathLayer, LineLayer, TextLayer, GeoJsonLayer } = deck;
 const $ = (s) => document.querySelector(s);
@@ -74,6 +76,7 @@ async function fetchFires(source) {
   return enrich(c.fire_id.map((id, i) => ({
     fire_id: id, ignition_date: c.ignition_date[i], size_ha: c.size_ha[i], latitude: c.latitude[i],
     longitude: c.longitude[i], general_cause: c.general_cause[i], fire_name: c.fire_name[i],
+    out_date: c.out_date?.[i] ?? null, protection_zone: c.protection_zone?.[i] ?? null,
   })));
 }
 
@@ -81,7 +84,8 @@ const SOURCE_LABELS = { cnfdb: 'CNFDB: National Fire Database (real)', spsa: 'SP
 
 async function useSource(source) {
   state.source = source;
-  state.all = await fetchFires(source);
+  state.all = prepareSearch(await fetchFires(source));
+  state.searchFilter = null;
   const years = [...new Set(state.all.map((f) => f.year))].sort((a, b) => a - b);
   const yearly = byYear(state.all, years);
   // Default to the continuous record (years with ≥100 fires; CNFDB is sparse before 1981)
@@ -97,7 +101,9 @@ async function useSource(source) {
   $('#yr-to').value = state.yrTo;
   $('#about-source').textContent = `Loaded: ${SOURCE_LABELS[source] ?? source}, ${fmtInt(state.all.length)} fires, ${state.minYear}–${state.maxYear}.`;
   applyFilters();
+  renderSearchApplied();
   state.t = seasonT(state.yrFrom, SEASON_START_DOY);
+  finder.refresh();
 }
 
 /** The guided story (and documentary script), rebuilt when the dataset or the spread list changes. */
@@ -107,7 +113,8 @@ function rebuildStory() {
 
 function applyFilters({ keepTime = true } = {}) {
   const minHa = state.minSize > 0 ? 10 ** state.minSize : 0;
-  state.filtered = state.all.filter((f) => state.causes.has(f.general_cause) && f.size_ha >= minHa);
+  const fromSearch = state.searchFilter?.test ?? (() => true); // "Replay these" / "Explore in 3D" from Search
+  state.filtered = state.all.filter((f) => state.causes.has(f.general_cause) && f.size_ha >= minHa && fromSearch(f));
   state.ys = [];
   for (let y = state.yrFrom; y <= state.yrTo; y++) state.ys.push(y);
   state.exploreData = state.filtered.filter((f) => f.year >= state.yrFrom && f.year <= state.yrTo);
@@ -145,6 +152,14 @@ map.on('load', () => {
 map.on('dragstart', () => { if (state.orbit) setOrbit(false); });
 map.on('move', () => { if (map.getTerrain()) dirty = true; }); // the terrain lift follows the map centre
 const spread = createSpreadMode({ map, toast, displayName, onOpen: (f) => { if (state.mode === 'spread') history.replaceState(null, '', `#spread/${f.id}`); } });
+const spreadIds = () => (state.spreadIdSet ??= new Set((state.spreadList ?? []).map((f) => f.cnfdb_fire_id).filter(Boolean)));
+const finder = createSearchMode({
+  map, toast, openCard: (f, fly) => openCard(f, fly),
+  getFires: () => state.all,
+  getCommunities: () => state.live?.communities ?? [],
+  getSpreadIds: spreadIds,
+  onUse: (mode, s) => useSearch(mode, s),
+});
 // The sun is drawn for the day on screen: the replay date, the spread date, or today
 const scene = createScene({
   map, getMode: () => state.mode,
@@ -355,6 +370,7 @@ async function refreshLive(force = false) {
   }
   state.live = body;
   computeThreats();
+  finder.communitiesChanged();
   const lis = body.log.map((l) => `<li class="${l.ok ? 'ok' : 'bad'}">${l.source}: ${l.ok ? `${l.n ?? 0}${l.note ? `, ${l.note}` : ''}` : l.error}</li>`).join('');
   $('#live-source').innerHTML = `
     <div class="src">${body.label} <span class="badge ${body.simulated ? '' : 'real'}">${body.simulated ? 'SIMULATED' : 'LIVE'}</span></div>
@@ -380,13 +396,14 @@ function frame(now) {
   if (state.orbit && state.mode === 'explore') map.setBearing(map.getBearing() + dt * 5);
   if (state.mode === 'explore' && state.viz === 'hex' && state.hexScale < 60) { state.hexScale = Math.min(60, state.hexScale + dt * 70); dirty = true; }
   tickCounters(dt);
-  const animated = state.mode === 'timeline' || state.mode === 'live' || state.mode === 'spread';
+  const animated = state.mode === 'timeline' || state.mode === 'live' || state.mode === 'spread' || state.mode === 'search';
   if (animated || dirty) {
     const layers = [...outlineLayer()];
     if (state.mode === 'timeline') layers.push(...lightning.under(now), ...timelineLayers(now), ...lightning.over(now, ADDITIVE, map.getZoom(), map.getCenter().lat));
     else if (state.mode === 'explore') layers.push(...exploreLayers());
     else if (state.mode === 'live') layers.push(...liveLayers(now));
     else if (state.mode === 'spread') layers.push(...spread.layers(now, dt));
+    else if (state.mode === 'search') layers.push(...finder.layers(now, dt));
     // With 3D terrain, deck.gl still draws at sea level: lift everything to the ground height at
     // the map centre so fires sit on the terrain (residual error is the local height difference)
     const lift = map.getTerrain() ? map.transform.elevation || 0 : 0;
@@ -472,7 +489,7 @@ function tickCounters(dt) {
 
 let statsKey = '';
 function updateStats(force = false) {
-  if (state.mode === 'spread') return; // the spread panel keeps its own figures
+  if (state.mode === 'spread' || state.mode === 'search') return; // those panels keep their own figures
   let list, active = 0, highlightMonth = -1, activeYear = null;
   if (state.mode === 'timeline') {
     const d = tToDate(state.t);
@@ -520,6 +537,7 @@ function updateStats(force = false) {
 // ---------------------------------------------------------------- tooltips & detail card
 function getTooltip({ object, layer, index }) {
   if (layer?.id.startsWith('spread-')) return spread.tooltip({ object, layer, index });
+  if (layer?.id.startsWith('sx-')) return finder.tooltip({ object, layer, index });
   if (!object || !layer) return null;
   const id = layer.id;
   if (id === 'hex') {
@@ -536,8 +554,9 @@ function getTooltip({ object, layer, index }) {
 }
 
 map.on('click', (e) => {
+  if (finder.consumeClick()) return; // the click dropped a search pin
   const info = overlay.pickObject({ x: e.point.x, y: e.point.y, radius: 4 });
-  if (info?.object?.fire_id) openCard(info.object);
+  if (info?.object?.fire_id) { openCard(info.object); if (state.mode === 'search') finder.select(info.object); }
   else if (!info) closeCard();
 });
 
@@ -591,13 +610,50 @@ function openCard(f, fly = false) {
 }
 function closeCard() { $('#card').hidden = true; }
 
+// ---------------------------------------------------------------- search → replay / explore
+/** Replay or Explore just the fires a search found (the cause and size controls still apply on top). */
+function useSearch(mode, s) {
+  state.searchFilter = { test: compileSearch(s.query, { spreadIds: spreadIds() }), parts: s.parts, count: s.count, query: s.query };
+  state.yrFrom = clamp(s.from, state.minYear, state.maxYear);
+  state.yrTo = clamp(s.to, state.minYear, state.maxYear);
+  syncYearInputs();
+  applyFilters({ keepTime: false });
+  renderSearchApplied();
+  closeCard();
+  setMode(mode);
+  if (mode === 'explore') setViz(state.viz);
+  if (mode === 'timeline') {
+    // Start a few days before the first match, at a pace that suits how many seasons it spans
+    const first = state.filtered.find((f) => f.year >= state.yrFrom);
+    if (first) state.t = Math.max(seasonT(first.year, SEASON_START_DOY), first.t - 5);
+    state.speed = state.yrTo - state.yrFrom > 3 ? 60 : 21; syncSpeed();
+    setPlaying(true);
+  }
+  toast(`${mode === 'timeline' ? 'Replaying' : 'Exploring'} ${fmtInt(s.count)} fires from your search.`);
+}
+function renderSearchApplied() {
+  const sf = state.searchFilter;
+  $('#sx-applied').hidden = !sf;
+  if (!sf) return;
+  $('#sx-applied-n').textContent = `${fmtInt(sf.count)} fires`;
+  $('#sx-applied-q').textContent = sf.parts.length ? sf.parts.join(' · ') : 'All fires';
+}
+function clearSearchFilter() {
+  state.searchFilter = null;
+  renderSearchApplied();
+  applyFilters();
+  if (state.mode === 'explore') setMode('explore');
+}
+
 // ---------------------------------------------------------------- modes & story
 function setMode(mode) {
   const was = state.mode;
   state.mode = mode;
-  document.body.classList.remove('mode-timeline', 'mode-explore', 'mode-live', 'mode-spread');
+  document.body.classList.remove('mode-timeline', 'mode-explore', 'mode-live', 'mode-spread', 'mode-search');
   document.body.classList.add(`mode-${mode}`);
   $$('.modes button').forEach((b) => b.setAttribute('aria-selected', String(state.storyActive ? b.dataset.mode === 'story' : b.dataset.mode === mode)));
+  const tab = $('.modes [aria-selected="true"]'); // on narrow screens the tab bar scrolls
+  if (tab && tab.parentElement.scrollWidth > tab.parentElement.clientWidth) tab.parentElement.scrollTo({ left: tab.offsetLeft - 40, behavior: 'smooth' });
   if (mode !== 'timeline') setPlaying(false);
   if (mode === 'explore') {
     state.hexScale = 0;
@@ -615,10 +671,12 @@ function setMode(mode) {
   if (mode !== 'timeline') lightning.reset();
   if (mode === 'spread' && was !== 'spread') spread.enter();
   if (mode !== 'spread' && was === 'spread') spread.exit();
+  if (mode === 'search' && was !== 'search') finder.enter();
+  if (mode !== 'search' && was === 'search') finder.exit();
   scarCache.key = null;
   dirty = true;
   updateStats(true);
-  history.replaceState(null, '', `#${state.storyActive ? 'story' : mode === 'spread' ? spread.hash : mode}`);
+  history.replaceState(null, '', `#${state.storyActive ? 'story' : mode === 'spread' ? spread.hash : mode === 'search' ? finder.hash : mode}`);
 }
 
 const app = {
@@ -752,6 +810,8 @@ function wireControls() {
   $('#intro-sources').addEventListener('click', () => sources.open());
   $('#about-sources').addEventListener('click', () => { $('#about').close(); sources.open(); });
   $('#watch').addEventListener('click', () => doc.start());
+  $('#sx-applied-clear').addEventListener('click', clearSearchFilter);
+  $('#sx-applied-edit').addEventListener('click', () => { const q = state.searchFilter?.query; if (q) finder.setQuery(q, { fit: false }); setMode('search'); });
 
   // Timeline scrubbing
   const track = $('#track');
@@ -786,6 +846,7 @@ function wireControls() {
     if (e.key === 'ArrowLeft' && state.mode === 'spread') spread.step(-1);
     if (['1', '2', '3', '4'].includes(e.key)) { exitStory(); setMode(['timeline', 'spread', 'explore', 'live'][Number(e.key) - 1]); }
     if (e.key === '5') enterStory();
+    if (e.key === '/') { e.preventDefault(); exitStory(); setMode('search'); finder.focus(); }
     if (e.key === 'Escape') { closeCard(); exitStory(); }
     if (e.key === 'm' || e.key === 'M') toggleSound();
     if ((e.key === 's' || e.key === 'S') && !doc.active) sources.open();
@@ -844,7 +905,7 @@ async function boot() {
   }
   refreshLive().catch(() => {}); // warm live data in the background (communities power the detail card)
   // Opens the first fire itself if Spread mode is already showing; the story then gains its spread chapter
-  spread.loadList().then((list) => { state.spreadList = list; rebuildStory(); });
+  spread.loadList().then((list) => { state.spreadList = list; state.spreadIdSet = null; rebuildStory(); finder.refresh(); });
 
   $('#intro-watch').disabled = false;
   const enter = (watch) => {
@@ -855,6 +916,7 @@ async function boot() {
     if (start === 'story') { enterStory(); return; }
     if (start.startsWith('spread')) spread.prefer(start.split('/')[1]);
     if (['explore', 'live'].includes(start) || start.startsWith('spread')) { setMode(start.split('/')[0]); return; }
+    if (start === 'search' || start.startsWith('search?')) { finder.setQuery(start); setMode('search'); return; }
     // Open on the most dramatic recent stretch of the record
     state.t = seasonT(Math.max(state.yrFrom, state.yrTo - 4), SEASON_START_DOY);
     setTimeout(() => setPlaying(true), 1800);
@@ -871,5 +933,5 @@ function toggleSound(on = !sound.enabled) {
   if (on) toast('Sound on: each ignition plays a note. Bigger fires sound lower; lightning rings like a bell.');
 }
 
-window.emberline = { state, map, app, spread, scene, lightning, liveLightning, sound, doc, sources }; // for the console, and for film/director.js
+window.emberline = { state, map, app, spread, finder, scene, lightning, liveLightning, sound, doc, sources }; // for the console, and for film/director.js
 boot();
