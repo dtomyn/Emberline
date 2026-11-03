@@ -307,6 +307,36 @@ card. Its few louder pops in each chapter are that chapter's largest real fires,
 (RMS about −22.6 dBFS), it sits near −34 to −38 dBFS between lines and −43 to −46 dBFS under the voice. It pauses
 with the film, fades out at the end, and the flame button mutes it (remembered).
 
+## Explainer film (YouTube)
+
+`npm run film` renders a 2½–3 minute explainer from the real app, frame by frame, with Kokoro narration,
+a drawn cursor whose clicks and hovers are real, video zoom-ins, click sounds and a synthesized score. The plan
+is [film/storyboard.md](film/storyboard.md); the scenes and narration are [film/scenes.js](film/scenes.js), and
+every spoken figure is computed from the loaded record at render time, so re-running it after a data refresh
+updates the film.
+
+```bash
+npm run film -- --preview
+```
+
+```bash
+npm run film -- --url https://github.com/<you>/emberline
+```
+
+`--preview` makes a quick 720p, 15 fps cut (about 15 minutes); the full render is 1080p at 30 fps (roughly an
+hour). `--stills 5,40,90` saves single frames, `--until 30` stops early, `--scale` sets the capture's pixel ratio
+(default 1.5 on a 1600×900 layout). Output goes to `data/film/` (gitignored): the MP4, `.srt` captions from the
+voice timings, `script.md`, `youtube.txt` (title, description, chapter times) and `storyboard.html` with a real
+frame from each scene.
+
+How it works: `film/render.py` starts its own server, opens the app in headless Microsoft Edge with
+`film/clock.js` replacing the page's clock (timers, animation frames and CSS animations only move when a frame
+is drawn), injects `film/director.js`, has `scripts/kokoro-voice.py` speak the lines (only new or changed lines
+are synthesized, into `data/film/voice/`), then steps the film one frame at a time, waiting for map tiles before
+each capture. `film/sound.py` mixes the voice, clicks, whooshes, thunder on every lightning strike drawn, a fire
+bed and a low pad, ducked under the voice; ffmpeg levels it to −14 LUFS. It uses the IRISIdeas Python
+(`playwright`, `imageio-ffmpeg`, `kokoro-onnx`, `soundfile`, `numpy`); set `KOKORO_PYTHON` and `KOKORO_DIR` elsewhere.
+
 ## Static hosting (optional)
 
 The app is meant to run with the Node server. To host the front end alone (e.g. GitHub Pages),

@@ -71,6 +71,15 @@ Each entry gives what the feature is **for**, what it must **show**, and what it
 - **Pause means explore:** pausing leaves the viewer in the real, interactive map.
 - **Sound bed stays subtle.** Its levels were measured against the voice; re-measure before changing them.
 
+## Explainer film (`npm run film`, not in the app)
+
+- **For:** a YouTube video that shows SPSA and anyone else what the app does, with the same "wow".
+  The real app filmed frame by frame: a drawn cursor (the real mouse follows it, so hovers and
+  clicks are the app's own), video zoom-ins, click sounds, titles, Kokoro narration and a score.
+- **Never:** a mock-up. Every shot is the running app on the loaded data, and every spoken figure
+  is computed at render time. The live scene says "labelled simulation" when that is what it shows.
+- **Rerunnable:** one command remakes it after any data or UI change (`film/storyboard.md`).
+
 ## Cross-cutting features
 
 - **Fire detail card.** Click any fire for size comparisons, the nearest community, "replay this

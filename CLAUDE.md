@@ -122,6 +122,18 @@ real detections, which the panel and About dialog say. Keep that wording if you 
 - Licences: NRCan and ECCC data are listed under the Open Government Licence – Canada. The SPSA ArcGIS services
   state no licence (`copyrightText` empty, checked 2026-11-03); the card says "None stated" rather than guessing.
 
+## Explainer film (`npm run film`): built
+
+- Plan in `film/storyboard.md`, scenes and narration in `film/scenes.js` (figures computed from the record, never typed).
+  `film/render.py` (IRISIdeas Python, headless Edge) renders to gitignored `data/film/`.
+- `film/clock.js` virtualizes performance.now, Date.now, timers, rAF and CSS animations (Web Animations API). Anything
+  new that animates must run off those, or it will drift in the film. Real fetches still take real time: scenes
+  wait for them with `f.until(...)`, which stops film time; `f.waitFor(...)` waits in film time.
+- `window.emberline.app` is exposed for the film (story-style scene setup). Prefer real clicks through the cursor.
+- Elements with `hidden` that also set `display` in CSS need a `[hidden] { display: none }` rule, or the invisible
+  overlay eats every click (this hit `.sources` and `.doc-card`).
+- Voice clips come from `scripts/kokoro-voice.py` into `data/film/voice/`; change a line and only it is remade.
+
 ## Open threads / ideas not yet done
 
 The full idea backlog, with verified public data sources and a suggested build order, is in

@@ -66,3 +66,12 @@ Each entry: the decision, the alternatives, and why. Add new entries at the bott
   Tree rings are how fire history is actually dated in the boreal forest, so the metaphor carries
   meaning: ring width is fire count, scars are the largest seasons, bores are source coverage.
   Live checks run on the server so CORS never decides whether a source can be asked.
+
+### Explainer filmed frame by frame under a virtual clock
+- **Alternatives:** screen recording a real session; a separate animated mock-up.
+- **Why:** a screen recording drops frames and can't be repeated exactly; a mock-up would break the
+  "never fake functionality" rule. Replacing the page's clock (timers, animation frames, CSS
+  animations) makes every run identical, so the film is a script that can be rerun after any change.
+  The IRISIdeas films use the same approach (Playwright + Edge + imageio-ffmpeg), and the same Python.
+- **Sound:** the YouTube film has a low synthesized pad as well as the fire bed, because it plays
+  without the app's context and needs to carry on its own; the in-app documentary keeps fire only.

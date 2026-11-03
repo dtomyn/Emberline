@@ -385,6 +385,7 @@ body.doc-paused .doc-paused-note { display: block; }
   background: radial-gradient(ellipse at 50% 55%, rgba(30,10,4,0.72), rgba(5,5,7,0.94) 70%); transition: opacity .9s ease; }
 .doc-card.in { opacity: 1; }
 .doc-card.out { opacity: 0; pointer-events: none; }
+.doc-card[hidden] { display: none; } /* display: grid would otherwise leave the invisible card over the map, eating every click */
 .doc-card h1 { margin: 0; font-size: clamp(44px, 8vw, 104px); line-height: 0.95; letter-spacing: -0.04em; font-weight: 700;
   background: linear-gradient(180deg, #fff3dc 10%, var(--ember-hot) 45%, var(--ember) 75%, var(--ember-deep)); -webkit-background-clip: text; background-clip: text; color: transparent;
   filter: drop-shadow(0 0 40px rgba(255,110,30,0.45)); }
@@ -414,6 +415,7 @@ dialog .sources-btn { height: auto; padding: 8px 14px; }
 
 .sources { position: fixed; inset: 0; z-index: 60; display: grid; grid-template-columns: 1fr minmax(340px, 420px); background: radial-gradient(ellipse at 38% 55%, #1d0b04 0%, #0a0606 55%, #050507 100%); opacity: 0; transition: opacity .4s ease; }
 .sources.on { opacity: 1; }
+.sources[hidden] { display: none; } /* display: grid above would otherwise keep the closed overlay over the map, eating every click */
 body.sources-open .topbar, body.sources-open .panel, body.sources-open .timeline { visibility: hidden; }
 .rings-stage { position: relative; min-height: 0; display: grid; grid-template-rows: auto 1fr; }
 .rings-head { padding: 28px 36px 0; max-width: 760px; pointer-events: none; position: relative; z-index: 1; }

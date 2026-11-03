@@ -871,5 +871,5 @@ function toggleSound(on = !sound.enabled) {
   if (on) toast('Sound on: each ignition plays a note. Bigger fires sound lower; lightning rings like a bell.');
 }
 
-window.emberline = { state, map, spread, scene, lightning, liveLightning, sound, doc, sources }; // handy for debugging from the console
+window.emberline = { state, map, app, spread, scene, lightning, liveLightning, sound, doc, sources }; // for the console, and for film/director.js
 boot();

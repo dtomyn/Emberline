@@ -13,6 +13,7 @@ As of 2026-11-03.
 | Hear the Season | 10 |
 | Sources: Read the rings (every source, request, licence, live check) | (core) |
 | Living Terrain and Sky: terrain and day/night lighting | 12 (smoke plumes not yet) |
+| Explainer film for YouTube, rendered by `npm run film` | (outreach) |
 
 ## Unfinished or unverified
 
