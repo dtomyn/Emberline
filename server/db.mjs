@@ -191,3 +191,23 @@ export function getSpreadFire(db, id) {
     rings: JSON.parse(f.rings), grid: JSON.parse(f.grid), growth: JSON.parse(f.growth), hotspots: cols,
   };
 }
+
+/**
+ * Everything the Sources view needs to say where the data came from: the latest import run per
+ * source (with its rejection reasons), fires and hectares per year for each source, the spread
+ * tables' coverage and sensors, and Emberline's own live-snapshot archive.
+ */
+export function provenanceInfo(db) {
+  const runs = db.prepare(`
+    SELECT source, input, started_at, finished_at, rows_read, rows_loaded, rows_rejected, notes
+    FROM import_runs r WHERE id = (SELECT MAX(id) FROM import_runs WHERE source = r.source)`).all();
+  const years = {};
+  for (const r of db.prepare('SELECT source, year, COUNT(*) AS fires, ROUND(SUM(size_ha)) AS ha FROM fires GROUP BY source, year ORDER BY year').all()) {
+    (years[r.source] ??= []).push({ year: r.year, fires: r.fires, ha: r.ha });
+  }
+  const sp = db.prepare(`SELECT COUNT(*) AS fires, MIN(year) AS minYear, MAX(year) AS maxYear, SUM(hotspot_count) AS hotspots,
+    SUM(source = 'nbac-wfs') AS wfs, SUM(source = 'nbac-shp') AS shp, ROUND(SUM(area_ha)) AS ha FROM spread_fires`).get();
+  const sensors = db.prepare('SELECT sensor, COUNT(*) AS n FROM spread_hotspots GROUP BY sensor ORDER BY n DESC').all();
+  const snaps = db.prepare('SELECT COUNT(*) AS n, MIN(fetched_at) AS first, MAX(fetched_at) AS last FROM live_snapshots').get();
+  return { sources: listSources(db), runs, years, spread: { ...sp, sensors }, snapshots: snaps };
+}

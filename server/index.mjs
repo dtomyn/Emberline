@@ -10,6 +10,8 @@
  *   GET /api/live/history          list of stored live snapshots
  *   GET /api/spread                fires with a True Spread Replay (NBAC perimeter + satellite hotspots)
  *   GET /api/spread/<id>           one fire: perimeter rings, arrival grid, daily growth, hotspots
+ *   GET /api/provenance            where every dataset came from: import runs, per-year counts, spread coverage
+ *   GET /api/provenance/ping/<id>  asks one source in src/provenance.js for its current state (fixed URLs only)
  *   GET /api/voice                 narration manifest (Kokoro clips made by "npm run make:voice"), keyed by line text
  *   GET /api/voice/<hash>.ogg      one narration clip from data/voice
  *
@@ -19,7 +21,8 @@ import { createServer } from 'node:http';
 import { readFile, stat } from 'node:fs/promises';
 import { gzipSync } from 'node:zlib';
 import { extname, join, normalize, resolve, sep } from 'node:path';
-import { openDb, listSources, queryFires, listSpreadFires, getSpreadFire, DB_PATH } from './db.mjs';
+import { openDb, listSources, queryFires, listSpreadFires, getSpreadFire, provenanceInfo, DB_PATH } from './db.mjs';
+import { sourceById, pingSource } from '../src/provenance.js';
 import { loadActiveIncidents, loadCommunities, loadPerimeters } from '../src/services/live.js';
 import { enrich } from '../src/data.js';
 import { CONFIG } from '../src/config.js';
@@ -87,6 +90,18 @@ async function handleApi(req, res, url) {
   if (p === '/api/live') return send(req, res, 200, await getLive(url.searchParams.has('refresh')));
   if (p === '/api/live/history') {
     return send(req, res, 200, db.prepare('SELECT id, fetched_at, source, label, incident_count FROM live_snapshots ORDER BY id DESC LIMIT 500').all());
+  }
+  if (p === '/api/provenance') {
+    const manifest = JSON.parse(await readFile(join(VOICE_DIR, 'manifest.json'), 'utf8').catch(() => 'null'));
+    const voice = manifest && { clips: Object.keys(manifest.clips ?? {}).length, engine: manifest.engine, voice: manifest.voice, madeAt: manifest.madeAt };
+    return send(req, res, 200, { ...provenanceInfo(db), voice, db: DB_PATH.split(sep).slice(-2).join('/') });
+  }
+  const ping = p.match(/^\/api\/provenance\/ping\/([\w-]+)$/);
+  if (ping) {
+    // Only the catalogue's own URLs are fetched; the id never becomes part of a URL
+    const src = sourceById(ping[1]);
+    if (!src?.ping) return send(req, res, 404, { error: `No checkable source '${ping[1]}'` });
+    return send(req, res, 200, await pingSource(src));
   }
   if (p === '/api/spread') return send(req, res, 200, listSpreadFires(db));
   const spread = p.match(/^\/api\/spread\/([\w-]+)$/);

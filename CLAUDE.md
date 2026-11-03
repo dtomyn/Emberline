@@ -49,7 +49,7 @@ When you trade off, keep both. Don't simplify the visuals to save effort, and do
   `SPSA/ProtectionAreas/MapServer/1` returns names but **null geometry**. The `Wildfire` folder is empty off-season.
 - `gisappl.saskatchewan.ca` REST returns 404. The public viewer is at `gisappl.saskatchewan.ca/Html5Ext/?viewer=wfmpublic`.
 - CWFIS GeoServer `public:activefires_current` **no longer exists**. Use `public:hotspots_last24hrs`
-  (has an `agency` field) and `public:m3_polygons_current` (filter with CQL `BBOX(geometry,…)`;
+  (has an `agency` field) and `public:m3_polygons_current` (filter with CQL `BBOX(geometry,w,s,e,n,'EPSG:4326')`: **without the CRS it matches nothing**, since the native CRS is Lambert;
   the WFS `bbox=` parameter errors).
 - CNFDB point zip: `https://cwfis.cfs.nrcan.gc.ca/downloads/nfdb/fire_pnt/current_version/NFDB_point_txt.zip`.
   Some rows have quoted commas. `REP_DATE` can disagree with `YEAR`/`MONTH`/`DAY`; the loader prefers `REP_DATE`.
@@ -112,6 +112,16 @@ real detections, which the panel and About dialog say. Keep that wording if you 
   levels, rates or voices. The louder pops are real fires (`chapter.sound.fires`), and About says so.
   The AudioContext is created inside the Watch click, or browsers block it.
 
+## Sources view (Read the rings): built
+
+- `src/provenance.js` catalogues **every** source (data, live feeds, basemap, terrain, derivations, voice, sound,
+  libraries, fonts) with owner, truth level, exact request and licence. Endpoints come from `CONFIG`; counts never
+  live there, they come from `/api/provenance`. Add an entry whenever you add a source.
+- `src/sources-view.js` draws it as a fire-scarred tree cross-section. "Ask the source now" goes through
+  `/api/provenance/ping/<id>`, which only fetches the catalogue's fixed URLs.
+- Licences: NRCan and ECCC data are listed under the Open Government Licence – Canada. The SPSA ArcGIS services
+  state no licence (`copyrightText` empty, checked 2026-11-03); the card says "None stated" rather than guessing.
+
 ## Open threads / ideas not yet done
 
 The full idea backlog, with verified public data sources and a suggested build order, is in
@@ -120,6 +130,5 @@ The full idea backlog, with verified public data sources and a suggested build o
 
 
 - Small-screen layout works but is unpolished.
-- Satellite perimeters are wired up but were empty during testing. Confirm they render in fire season.
 - Possible additions: fire-weather (FWI) overlays from CWFIS, decade comparison view, shareable
   URL state beyond the mode hash, `live_snapshots` history playback.

@@ -145,6 +145,8 @@ tests/                    node --test suites
 | `GET /api/live/history` | Stored live snapshots |
 | `GET /api/spread` | Fires with a spread replay (no geometry) |
 | `GET /api/spread/<id>` | One fire: perimeter rings, arrival grid, daily growth and hotspots |
+| `GET /api/provenance` | Where every dataset came from: latest import run per source (rows read, rejected by reason, loaded), fires per year, spread coverage by sensor, live snapshot count |
+| `GET /api/provenance/ping/<id>` | Asks one catalogued source (`src/provenance.js`) for its current state: feature count, newest frame or file date. Fixed URLs only |
 | `GET /api/voice` | Narration manifest: voice settings and, per line of text, its clip, length and sentence times |
 | `GET /api/voice/<hash>.ogg` | One narration clip |
 
@@ -154,6 +156,12 @@ database and raw downloads are never exposed.
 ---
 
 ## Data sources
+
+In the app, **Sources** (top bar, the intro, the About dialog, or <kbd>S</kbd>; or open `/#sources`) shows all of
+this as *Read the rings*: a fire-scarred tree cross-section where each ring is a year of the record and each source
+bores through the years it covers. Each source's card gives its owner, licence, counts from the database, the
+rows rejected on load, the exact request, a citation to copy, and a button that asks the source for its state now.
+The catalogue behind it is `src/provenance.js`.
 
 ### 1. Historical record: Canadian National Fire Database (CNFDB), the primary source
 

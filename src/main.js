@@ -12,6 +12,7 @@ import { createScene } from './scene.js';
 import { createLightning, createLiveLightning, buildStorms } from './lightning.js';
 import { createSonifier } from './sonify.js';
 import { createDocumentary } from './documentary.js';
+import { createSourcesView } from './sources-view.js';
 
 const { MapboxOverlay, ScatterplotLayer, HeatmapLayer, HexagonLayer, PathLayer, LineLayer, TextLayer, GeoJsonLayer } = deck;
 const $ = (s) => document.querySelector(s);
@@ -656,6 +657,8 @@ const doc = createDocumentary({
   dataset: () => ({ label: SOURCE_LABELS[state.source] ?? state.source, simulated: state.source === 'mock' }),
 });
 
+const sources = createSourcesView({ getFires: () => state.all, getLive: () => state.live });
+
 function showChapter(i, { doc = false } = {}) {
   const chapters = state.story.chapters;
   state.storyIndex = clamp(i, 0, chapters.length - 1);
@@ -745,6 +748,9 @@ function wireControls() {
   $('#story-next').addEventListener('click', () => (state.storyIndex === state.story.chapters.length - 1 ? (exitStory(), setMode('explore')) : showChapter(state.storyIndex + 1)));
   $('#story-prev').addEventListener('click', () => showChapter(state.storyIndex - 1));
   $('#about-btn').addEventListener('click', () => $('#about').showModal());
+  $('#sources-btn').addEventListener('click', () => sources.open());
+  $('#intro-sources').addEventListener('click', () => sources.open());
+  $('#about-sources').addEventListener('click', () => { $('#about').close(); sources.open(); });
   $('#watch').addEventListener('click', () => doc.start());
 
   // Timeline scrubbing
@@ -766,7 +772,7 @@ function wireControls() {
   track.addEventListener('pointerup', () => { scrubbing = false; if (wasPlaying) setPlaying(true); });
 
   window.addEventListener('keydown', (e) => {
-    if (e.target.matches('input, select, textarea')) return;
+    if (e.target.matches('input, select, textarea') || sources.isOpen) return;
     if (doc.active && [' ', 'ArrowRight', 'Escape'].includes(e.key)) {
       e.preventDefault();
       if (e.key === ' ') doc.toggle(); else if (e.key === 'ArrowRight') doc.next(); else exitStory();
@@ -782,6 +788,7 @@ function wireControls() {
     if (e.key === '5') enterStory();
     if (e.key === 'Escape') { closeCard(); exitStory(); }
     if (e.key === 'm' || e.key === 'M') toggleSound();
+    if ((e.key === 's' || e.key === 'S') && !doc.active) sources.open();
   });
 }
 
@@ -829,6 +836,7 @@ async function boot() {
     $('#intro-foot').textContent = `${fmtInt(state.all.length)} fires · ${fmtHa(state.all.reduce((s, f) => s + f.size_ha, 0))} ha · ${SOURCE_LABELS[state.source] ?? state.source}`;
     btn.disabled = false;
     btn.querySelector('.cta-label').textContent = 'Enter the atlas';
+    if (start === 'sources') sources.open();
   } catch (err) {
     btn.querySelector('.cta-label').textContent = 'Data unavailable';
     $('#intro-foot').textContent = err.message;
@@ -863,5 +871,5 @@ function toggleSound(on = !sound.enabled) {
   if (on) toast('Sound on: each ignition plays a note. Bigger fires sound lower; lightning rings like a bell.');
 }
 
-window.emberline = { state, map, spread, scene, lightning, liveLightning, sound, doc }; // handy for debugging from the console
+window.emberline = { state, map, spread, scene, lightning, liveLightning, sound, doc, sources }; // handy for debugging from the console
 boot();

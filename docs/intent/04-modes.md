@@ -37,6 +37,21 @@ Each entry gives what the feature is **for**, what it must **show**, and what it
 - **Never:** passes off simulation as live. The badge reads LIVE or SIMULATED.
 - **Also:** stores every real pull in `live_snapshots`, so the app builds its own archive of seasons.
 
+## Sources (Read the rings)
+
+- **For:** answering "where did this come from?" for a specialist who knows the data, in a
+  way that is itself worth looking at. Fire history is dated from tree rings, so the trace is a
+  fire-scarred cross-section rather than a footnote.
+- **Shows:** each ring is a year of the record (wider with more fires), the largest seasons
+  leave scars, record sources run as bores through the years they cover, live feeds sit in the
+  bark, and the scene, made-here pieces (derivations, interpolation, voice, sound) and code
+  circle outside. Each source's card: owner, what it gives, counts from the database, the
+  rejection funnel, the exact request, licence (or "none stated"), a citation, and a live
+  check against the source. Opens from the top bar, the intro, About, <kbd>S</kbd> or `#sources`.
+- **Never:** lists a source the app doesn't use, or writes a count by hand. Every number comes
+  from `/api/provenance` or a live check; the catalogue (`src/provenance.js`) holds only
+  descriptions and the endpoints from `config.js`. Simulated sources carry their label here too.
+
 ## Story
 
 - **For:** a guided path for someone who doesn't know where to click: the biggest season, a

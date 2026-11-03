@@ -92,7 +92,8 @@ async function fromCWFISHotspots() {
 /** Current satellite-derived fire perimeters (M3) intersecting Saskatchewan. */
 export async function loadPerimeters() {
   const [w, s, e, n] = CONFIG.cwfis.bbox;
-  const fc = await wfs(CONFIG.cwfis.perimeters, `BBOX(geometry,${w},${s},${e},${n})`);
+  // Without the CRS, GeoServer reads the box in the layer's native Lambert projection and matches nothing
+  const fc = await wfs(CONFIG.cwfis.perimeters, `BBOX(geometry,${w},${s},${e},${n},'EPSG:4326')`);
   return fc.features.filter((f) => f.geometry);
 }
 

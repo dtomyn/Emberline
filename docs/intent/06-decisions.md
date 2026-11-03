@@ -59,3 +59,10 @@ Each entry: the decision, the alternatives, and why. Add new entries at the bott
 ### 3D terrain lit by the real sun
 - **Why:** turns a flat map into a place and makes the date on screen visible as light. deck.gl
   layers are lifted to the terrain so they don't float.
+
+### Sources as a fire-scarred tree cross-section
+- **Alternatives:** a credits list in About; a drill-core log like IRISIdeas.
+- **Why:** the owner wanted every source credited with the same "wow" as the rest of the app.
+  Tree rings are how fire history is actually dated in the boreal forest, so the metaphor carries
+  meaning: ring width is fire count, scars are the largest seasons, bores are source coverage.
+  Live checks run on the server so CORS never decides whether a source can be asked.

@@ -11,12 +11,12 @@ As of 2026-11-03.
 | Emberline Presents: narrated film with Kokoro voice and fire sound bed | 2 (core) |
 | Lightning Storms (history and live) | 4 |
 | Hear the Season | 10 |
+| Sources: Read the rings (every source, request, licence, live check) | (core) |
 | Living Terrain and Sky: terrain and day/night lighting | 12 (smoke plumes not yet) |
 
 ## Unfinished or unverified
 
 - Small-screen layout works but is unpolished.
-- Satellite perimeters are wired up but were empty during testing; confirm in fire season.
 - Pronunciation of place names in the film is unverified by ear beyond the known fixes.
 - No configured SPSA active-fire layer yet; auto-discovery will find one when SPSA publishes it.
 

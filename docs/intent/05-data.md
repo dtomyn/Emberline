@@ -17,6 +17,10 @@ is used and **how true** each thing on screen is.
 | **Sun position** (computed) | Lighting | No data needed. |
 | **Mock data** (generated) | Offline fallback | Lets the app run without a network. Always labelled. |
 
+Every source above, plus the scene, voice, sound and code, is catalogued in `src/provenance.js`
+and shown in the Sources view. **A new source means a new catalogue entry** (with its truth level),
+or the app stops telling the whole truth about where it comes from.
+
 ## Truth levels
 
 Everything on screen falls into one of these, and the UI must not blur them.
