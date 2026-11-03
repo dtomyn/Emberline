@@ -52,6 +52,13 @@ When you trade off, keep both. Don't simplify the visuals to save effort, and do
 - CNFDB point zip: `https://cwfis.cfs.nrcan.gc.ca/downloads/nfdb/fire_pnt/current_version/NFDB_point_txt.zip`.
   Some rows have quoted commas. `REP_DATE` can disagree with `YEAR`/`MONTH`/`DAY`; the loader prefers `REP_DATE`.
 
+- NBAC WFS `public:nbac` (fields lower case, `admin_area='SK'`) returns WGS84 GeoJSON but stops at **2024**.
+  2025 is only in `downloads/nbac/NBAC_2025_<date>.zip` (shapefile, Canada LCC, DBF field `ADMIN_NAME`).
+  Big perimeters are huge (the 2023 445k ha fire is 728k vertices / 20 MB), so the loader simplifies them.
+- `public:hotspots` (native CRS EPSG:3978, has `frp`, `ws`, `wd`, `rep_day`) **times out (504 after 20 s)**
+  for multi-month or bbox queries. One `rep_day` with `agency='SK'` takes about 4–16 s. Yearly archives
+  (`downloads/hotspots/archive/<year>_hotspots.zip`, about 140 MB) are the bulk alternative.
+
 Re-check these before relying on them. Government endpoints change.
 
 ## Conventions
@@ -63,6 +70,12 @@ Re-check these before relying on them. Government endpoints change.
 - Verify visual changes in a real browser. Note that the desktop preview pane throttles
   `requestAnimationFrame` (about 1 fps), so judge smoothness in a normal browser.
 - Commit messages end with the Co-Authored-By trailer the session provides.
+
+## Spread mode (True Spread Replay, idea 1 in IDEAS.md): built
+
+`npm run load:spread` → `spread_fires` / `spread_hotspots`. Shared algorithms live in `src/spread.js`
+(tested in `tests/spread.test.mjs`) and the UI in `src/spread-mode.js`. The front is interpolated between
+real detections, which the panel and About dialog say. Keep that wording if you change the method.
 
 ## Open threads / ideas not yet done
 

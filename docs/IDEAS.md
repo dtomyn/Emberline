@@ -23,7 +23,7 @@ as a story, accurate to the day, at the scale of their own communities.
 
 ---
 
-## 1. True Spread Replay (real day-by-day fire growth)
+## 1. True Spread Replay (real day-by-day fire growth): built, see the Spread mode
 
 **What you see.** Pick the 2025 Shoe fire. The camera drops into a low, tilted 3D view.
 Satellite detections pop in day by day as hot pixels that flare white and cool to red. A

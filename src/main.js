@@ -7,6 +7,7 @@ import {
 import { CAUSE_COLORS, createCauseDonut, createFireClock, createYearBars, createTimelineCanvas, seasonAxis } from './charts.js';
 import { loadActiveIncidents, loadCommunities, loadPerimeters, haversineKm } from './services/live.js';
 import { buildStory } from './story.js';
+import { createSpreadMode } from './spread-mode.js';
 
 const { MapboxOverlay, ScatterplotLayer, HeatmapLayer, HexagonLayer, PathLayer, LineLayer, TextLayer, GeoJsonLayer } = deck;
 const $ = (s) => document.querySelector(s);
@@ -139,6 +140,7 @@ map.on('load', () => {
   }
 });
 map.on('dragstart', () => { if (state.orbit) setOrbit(false); });
+const spread = createSpreadMode({ map, toast, displayName, onOpen: (f) => { if (state.mode === 'spread') history.replaceState(null, '', `#spread/${f.id}`); } });
 
 const outlineLayer = () => [
   new PathLayer({ id: 'sk-glow', data: [{ path: SASK_OUTLINE }], getPath: (d) => d.path, getColor: [255, 120, 40, 40], widthMinPixels: 8, parameters: ADDITIVE }),
@@ -351,12 +353,13 @@ function frame(now) {
   if (state.orbit && state.mode === 'explore') map.setBearing(map.getBearing() + dt * 5);
   if (state.mode === 'explore' && state.viz === 'hex' && state.hexScale < 60) { state.hexScale = Math.min(60, state.hexScale + dt * 70); dirty = true; }
   tickCounters(dt);
-  const animated = state.mode === 'timeline' || state.mode === 'live';
+  const animated = state.mode === 'timeline' || state.mode === 'live' || state.mode === 'spread';
   if (animated || dirty) {
     const layers = [...outlineLayer()];
     if (state.mode === 'timeline') layers.push(...timelineLayers(now));
     else if (state.mode === 'explore') layers.push(...exploreLayers());
     else if (state.mode === 'live') layers.push(...liveLayers(now));
+    else if (state.mode === 'spread') layers.push(...spread.layers(now, dt));
     overlay.setProps({ layers });
     dirty = false;
   }
@@ -426,6 +429,7 @@ function tickCounters(dt) {
 
 let statsKey = '';
 function updateStats(force = false) {
+  if (state.mode === 'spread') return; // the spread panel keeps its own figures
   let list, active = 0, highlightMonth = -1, activeYear = null;
   if (state.mode === 'timeline') {
     const d = tToDate(state.t);
@@ -471,7 +475,8 @@ function updateStats(force = false) {
 }
 
 // ---------------------------------------------------------------- tooltips & detail card
-function getTooltip({ object, layer }) {
+function getTooltip({ object, layer, index }) {
+  if (layer?.id.startsWith('spread-')) return spread.tooltip({ object, layer, index });
   if (!object || !layer) return null;
   const id = layer.id;
   if (id === 'hex') {
@@ -522,7 +527,7 @@ function openCard(f, fly = false) {
       ${nearest}
     </dl>
     <div class="compare">${compare(f.size_ha)}. The burn circle on the map has this same area.</div>
-    <div class="actions"><button class="cta small" id="card-replay">▶ Replay this fire</button><button class="ghost" id="card-zoom">Zoom in</button></div>`;
+    <div class="actions"><button class="cta small" id="card-replay">▶ Replay this fire</button>${spread.forCnfdb(f.fire_id) ? '<button class="cta small spread-btn" id="card-spread">True spread</button>' : ''}<button class="ghost" id="card-zoom">Zoom in</button></div>`;
   card.hidden = false;
   card.querySelector('.close').onclick = closeCard;
   $('#card-zoom').onclick = () => map.flyTo({ center: f.position, zoom: clamp(11 - Math.log10(f.size_ha + 10) * 1.2, 5.5, 10), pitch: 45, duration: 2500 });
@@ -537,14 +542,17 @@ function openCard(f, fly = false) {
     map.flyTo({ center: f.position, zoom: clamp(10 - Math.log10(f.size_ha + 10) * 1.1, 5.5, 9.5), pitch: 40, duration: 2500 });
     closeCard();
   };
+  const sp = spread.forCnfdb(f.fire_id);
+  if (sp) $('#card-spread').onclick = () => { exitStory(); closeCard(); setMode('spread'); spread.open(sp.id); };
   if (fly) map.flyTo({ center: f.position, zoom: clamp(10.5 - Math.log10(f.size_ha + 10) * 1.1, 5.5, 9.5), duration: 2200 });
 }
 function closeCard() { $('#card').hidden = true; }
 
 // ---------------------------------------------------------------- modes & story
 function setMode(mode) {
+  const was = state.mode;
   state.mode = mode;
-  document.body.classList.remove('mode-timeline', 'mode-explore', 'mode-live');
+  document.body.classList.remove('mode-timeline', 'mode-explore', 'mode-live', 'mode-spread');
   document.body.classList.add(`mode-${mode}`);
   $$('.modes button').forEach((b) => b.setAttribute('aria-selected', String(state.storyActive ? b.dataset.mode === 'story' : b.dataset.mode === mode)));
   if (mode !== 'timeline') setPlaying(false);
@@ -560,10 +568,12 @@ function setMode(mode) {
     else if (state.live.simulated) toast('Off-season: no active incidents published. Showing a labelled simulation.');
   }
   if (mode !== 'explore') setOrbit(false);
+  if (mode === 'spread' && was !== 'spread') spread.enter();
+  if (mode !== 'spread' && was === 'spread') spread.exit();
   scarCache.key = null;
   dirty = true;
   updateStats(true);
-  history.replaceState(null, '', `#${state.storyActive ? 'story' : mode}`);
+  history.replaceState(null, '', `#${state.storyActive ? 'story' : mode === 'spread' ? spread.hash : mode}`);
 }
 
 const app = {
@@ -685,11 +695,13 @@ function wireControls() {
 
   window.addEventListener('keydown', (e) => {
     if (e.target.matches('input, select, textarea')) return;
-    if (e.key === ' ') { e.preventDefault(); e.target.blur?.(); if (state.mode === 'timeline') setPlaying(!state.playing); }
+    if (e.key === ' ') { e.preventDefault(); e.target.blur?.(); if (state.mode === 'timeline') setPlaying(!state.playing); if (state.mode === 'spread') spread.toggle(); }
     if (e.key === 'ArrowRight' && state.mode === 'timeline') { advance(7); scarCache.key = null; }
     if (e.key === 'ArrowLeft' && state.mode === 'timeline') { state.t = Math.max(seasonT(state.yrFrom, SEASON_START_DOY), state.t - 7); scarCache.key = null; }
-    if (['1', '2', '3'].includes(e.key)) { exitStory(); setMode(['timeline', 'explore', 'live'][Number(e.key) - 1]); }
-    if (e.key === '4') enterStory();
+    if (e.key === 'ArrowRight' && state.mode === 'spread') spread.step(1);
+    if (e.key === 'ArrowLeft' && state.mode === 'spread') spread.step(-1);
+    if (['1', '2', '3', '4'].includes(e.key)) { exitStory(); setMode(['timeline', 'spread', 'explore', 'live'][Number(e.key) - 1]); }
+    if (e.key === '5') enterStory();
     if (e.key === 'Escape') { closeCard(); exitStory(); }
   });
 }
@@ -744,18 +756,20 @@ async function boot() {
     return;
   }
   refreshLive().catch(() => {}); // warm live data in the background (communities power the detail card)
+  spread.loadList(); // opens the first fire itself if Spread mode is already showing
 
   btn.addEventListener('click', () => {
     $('#intro').classList.add('gone');
     setTimeout(stopEmbers, 1400);
     map.flyTo({ center: [-105.7, 54.9], zoom: 4.85, pitch: 20, bearing: -4, duration: 3500, curve: 1.6 });
     if (start === 'story') { enterStory(); return; }
-    if (['explore', 'live'].includes(start)) { setMode(start); return; }
+    if (start.startsWith('spread')) spread.prefer(start.split('/')[1]);
+    if (['explore', 'live'].includes(start) || start.startsWith('spread')) { setMode(start.split('/')[0]); return; }
     // Open on the most dramatic recent stretch of the record
     state.t = seasonT(Math.max(state.yrFrom, state.yrTo - 4), SEASON_START_DOY);
     setTimeout(() => setPlaying(true), 1800);
   }, { once: true });
 }
 
-window.emberline = { state, map }; // handy for debugging from the console
+window.emberline = { state, map, spread }; // handy for debugging from the console
 boot();

@@ -6,6 +6,12 @@
       "runtimeExecutable": "node",
       "runtimeArgs": ["server/index.mjs", "5173"],
       "port": 5173
+    },
+    {
+      "name": "emberline-alt",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["server/index.mjs"],
+      "port": 5174
     }
   ]
 }

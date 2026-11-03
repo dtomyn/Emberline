@@ -35,9 +35,10 @@
     <div class="brand"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16 2c2 6 9 9 9 17a9 9 0 0 1-18 0c0-4 2-6 4-8 0 3 1 5 3 5-1-5 0-10 2-14z"/></svg>Ember<b>line</b></div>
     <nav class="modes" role="tablist" aria-label="View mode">
       <button role="tab" data-mode="timeline" aria-selected="true"><kbd>1</kbd>Replay</button>
-      <button role="tab" data-mode="explore"><kbd>2</kbd>Explore</button>
-      <button role="tab" data-mode="live"><kbd>3</kbd>Live<i class="live-dot"></i></button>
-      <button role="tab" data-mode="story"><kbd>4</kbd>Story</button>
+      <button role="tab" data-mode="spread"><kbd>2</kbd>Spread</button>
+      <button role="tab" data-mode="explore"><kbd>3</kbd>Explore</button>
+      <button role="tab" data-mode="live"><kbd>4</kbd>Live<i class="live-dot"></i></button>
+      <button role="tab" data-mode="story"><kbd>5</kbd>Story</button>
     </nav>
     <button class="icon-btn" id="about-btn" aria-label="About the data" title="About the data">?</button>
   </header>
@@ -90,6 +91,20 @@
       </div>
     </div>
 
+    <div class="group" data-show="spread">
+      <label class="glabel" for="spread-search">Major fires <output>real growth</output></label>
+      <input type="search" id="spread-search" class="search" placeholder="Search name or year" autocomplete="off" />
+      <div class="spread-list" id="spread-list"><p class="muted small">Loading…</p></div>
+    </div>
+
+    <div class="group" data-show="spread">
+      <label class="glabel">Show</label>
+      <label class="toggle"><input type="checkbox" id="spread-director" checked /> <span>Director camera</span></label>
+      <label class="toggle"><input type="checkbox" id="spread-show-hotspots" checked /> <span>Satellite detections</span></label>
+      <label class="toggle"><input type="checkbox" id="spread-show-embers" checked /> <span>Embers (drift with wind)</span></label>
+      <label class="toggle"><input type="checkbox" id="spread-show-ghost" checked /> <span>Final perimeter outline</span></label>
+    </div>
+
     <div class="group live-only" data-show="live">
       <label class="glabel">Data source</label>
       <div id="live-source" class="live-source">Connecting…</div>
@@ -116,6 +131,28 @@
     </div>
     <div class="largest" id="largest"></div>
     <div class="threats" id="threats" data-show="live"></div>
+
+    <section class="spread-stats" data-show="spread">
+      <p class="spread-kicker" id="spread-kicker"></p>
+      <h2 class="spread-name" id="spread-name">True spread replay</h2>
+      <div class="kpis">
+        <div class="kpi hot"><span class="kv" id="sk-ha">0</span><span class="kl">hectares burned</span></div>
+        <div class="kpi"><span class="kv" id="sk-pct">0%</span><span class="kl">of final area</span></div>
+        <div class="kpi"><span class="kv" id="sk-det">0</span><span class="kl">detections</span></div>
+      </div>
+      <p class="spread-today" id="sk-today">&nbsp;</p>
+      <div class="chart wide">
+        <h3>Growth <small>area · daily gain</small></h3>
+        <div id="spread-chart"></div>
+      </div>
+      <div class="chart wide">
+        <h3>Front spread rate</h3>
+        <div class="rate-legend" id="spread-legend"></div>
+        <div class="dot-legend"><span><i class="d-hot"></i>Satellite detection</span><span><i class="d-beam"></i>New this half-day</span></div>
+      </div>
+      <dl class="spread-facts" id="spread-facts"></dl>
+      <p class="spread-method" id="spread-method"></p>
+    </section>
   </aside>
 
   <!-- Bottom: timeline -->
@@ -136,6 +173,31 @@
       <button data-speed="140">20×</button>
     </div>
   </footer>
+
+  <!-- Spread timeline -->
+  <footer class="timeline spread-tl" id="spread-tl">
+    <button class="play" id="spread-play" aria-label="Play">
+      <svg viewBox="0 0 24 24" class="i-play"><path d="M7 4l13 8-13 8z"/></svg>
+      <svg viewBox="0 0 24 24" class="i-pause"><path d="M6 4h4v16H6zM14 4h4v16h-4z"/></svg>
+    </button>
+    <div class="track" id="spread-track">
+      <canvas id="spread-canvas"></canvas>
+      <div class="playhead" id="spread-playhead"><span id="spread-playhead-label"></span></div>
+      <div class="hover-tip" id="spread-tip"></div>
+    </div>
+    <div class="speed seg-ctl" id="spread-speed" aria-label="Playback speed (days per second)">
+      <button data-speed="1">1 d/s</button>
+      <button data-speed="2" class="on">2 d/s</button>
+      <button data-speed="4">4 d/s</button>
+      <button data-speed="8">8 d/s</button>
+    </div>
+  </footer>
+
+  <!-- Spread overlays -->
+  <div class="spread-title" id="spread-title" aria-live="polite"></div>
+  <div class="spread-callout" id="spread-callout" role="status"></div>
+  <div class="spread-slow" id="spread-slow" aria-hidden="true">slow motion</div>
+  <div class="spread-loading" id="spread-loading" aria-hidden="true"><i></i>Loading perimeter and detections…</div>
 
   <!-- Year flash -->
   <div class="year-flash" id="year-flash" aria-hidden="true"></div>
@@ -160,8 +222,9 @@
     <h2>About the data</h2>
     <p><b>Historical record.</b> The Canadian National Fire Database (CNFDB, Natural Resources Canada), filtered to fires reported by Saskatchewan (<code>SRC_AGENCY = 'SK'</code>): ignition date, size, location and cause for every recorded wildfire. Load scripts put it, and optionally an SPSA CSV export, into a local SQLite database. <span id="about-source"></span></p>
     <p><b>Live layers.</b> Community locations are fetched live from SPSA's public ArcGIS server (<code>gis.saskatchewan.ca/arcgis/rest/services/SPSA/Communities</code>). Active incidents come from an SPSA layer when one is published, then from the CWFIS national feed, and otherwise from a clearly labelled simulation.</p>
+    <p><b>True spread replay.</b> Final burned-area perimeters come from NRCan's National Burned Area Composite (NBAC). Satellite hotspots (MODIS 1 km, VIIRS 375 m) come from the CWFIS archive. Each detection inside a perimeter seeds an arrival-time grid, and the glowing front is the line where that arrival time equals the moment shown. Between detections the shape is interpolated. Ember drift follows the wind recorded with each day's hotspots. Load it with <code>npm run load:spread</code>.</p>
     <p class="muted">Burn circles have the same area as the reported fire size; they are not perimeters. Synthetic "mock" data, when selected, is generated by <code>scripts/generate-mock.mjs</code>.</p>
-    <p class="muted">Keyboard: <kbd>Space</kbd> play/pause · <kbd>←</kbd>/<kbd>→</kbd> step a week · <kbd>1</kbd>–<kbd>4</kbd> modes · <kbd>Esc</kbd> close</p>
+    <p class="muted">Keyboard: <kbd>Space</kbd> play/pause · <kbd>←</kbd>/<kbd>→</kbd> step a week · <kbd>1</kbd>–<kbd>5</kbd> modes · <kbd>Esc</kbd> close</p>
     <form method="dialog"><button class="cta small">Close</button></form>
   </dialog>
 

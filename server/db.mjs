@@ -54,6 +54,32 @@ CREATE TABLE IF NOT EXISTS live_snapshots (
   incident_count INTEGER NOT NULL,
   payload     TEXT NOT NULL                    -- JSON array of normalized incidents
 );
+
+-- True Spread Replay: large fires with a real NBAC perimeter and the satellite hotspots inside it.
+-- Built by scripts/load-spread.mjs; arrival grids and daily growth are pre-computed there.
+CREATE TABLE IF NOT EXISTS spread_fires (
+  id            TEXT PRIMARY KEY,              -- nbac-<year>-<nfireid>
+  year          INTEGER NOT NULL,
+  nfireid       INTEGER,
+  source        TEXT NOT NULL,                 -- nbac-wfs | nbac-shp
+  cause         TEXT,
+  area_ha       REAL NOT NULL,
+  base_date     TEXT NOT NULL,                 -- day 0 of the replay (yyyy-mm-dd)
+  hs_sdate TEXT, hs_edate TEXT, ag_sdate TEXT, ag_edate TEXT,
+  min_lon REAL, min_lat REAL, max_lon REAL, max_lat REAL,
+  cnfdb_fire_id TEXT, fire_name TEXT,          -- matched CNFDB record, when one exists
+  hotspot_count INTEGER NOT NULL,
+  rings         TEXT NOT NULL,                 -- JSON [[[lon,lat],…],…] simplified, even-odd fill
+  grid          TEXT NOT NULL,                 -- JSON { w, h, cellKm, bbox, arrival: base64 Uint16 hours }
+  growth        TEXT NOT NULL                  -- JSON { days: [{ ha, bbox }], merges: [{ day, lon, lat, ha }] }
+);
+CREATE TABLE IF NOT EXISTS spread_hotspots (
+  fire_id TEXT NOT NULL,
+  t       REAL NOT NULL,                       -- days since base_date
+  lon REAL NOT NULL, lat REAL NOT NULL,
+  frp REAL, sensor TEXT, ws REAL, wd REAL
+);
+CREATE INDEX IF NOT EXISTS spread_hotspots_fire ON spread_hotspots (fire_id, t);
 `;
 
 export function openDb(path = DB_PATH) {
@@ -113,4 +139,55 @@ export function queryFires(db, { source, from = 0, to = 9999 }) {
   const cols = { fire_id: [], ignition_date: [], size_ha: [], latitude: [], longitude: [], general_cause: [], fire_name: [] };
   for (const r of rows) for (const k in cols) cols[k].push(r[k]);
   return { count: rows.length, columns: cols };
+}
+
+/** Replace every spread fire (and its hotspots) in one transaction and record the run. */
+export function replaceSpread(db, fires, { input, rowsRead, rejects = {} } = {}) {
+  const started = new Date().toISOString();
+  const insFire = db.prepare(`
+    INSERT INTO spread_fires (id, year, nfireid, source, cause, area_ha, base_date, hs_sdate, hs_edate, ag_sdate, ag_edate,
+      min_lon, min_lat, max_lon, max_lat, cnfdb_fire_id, fire_name, hotspot_count, rings, grid, growth)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
+  const insHot = db.prepare('INSERT INTO spread_hotspots (fire_id, t, lon, lat, frp, sensor, ws, wd) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
+  db.exec('BEGIN');
+  try {
+    db.exec('DELETE FROM spread_hotspots; DELETE FROM spread_fires;');
+    for (const f of fires) {
+      insFire.run(f.id, f.year, f.nfireid ?? null, f.source, f.cause ?? null, f.area_ha, f.base_date,
+        f.hs_sdate ?? null, f.hs_edate ?? null, f.ag_sdate ?? null, f.ag_edate ?? null, ...f.bbox,
+        f.cnfdb_fire_id ?? null, f.fire_name ?? null, f.hotspots.length,
+        JSON.stringify(f.rings), JSON.stringify(f.grid), JSON.stringify(f.growth));
+      for (const h of f.hotspots) insHot.run(f.id, h.t, h.lon, h.lat, h.frp, h.sensor, h.ws, h.wd);
+    }
+    const rejected = Object.values(rejects).reduce((s, n) => s + n, 0);
+    db.prepare(`INSERT INTO import_runs (source, input, started_at, finished_at, rows_read, rows_loaded, rows_rejected, notes)
+                VALUES ('spread', ?, ?, ?, ?, ?, ?, ?)`)
+      .run(input ?? null, started, new Date().toISOString(), rowsRead ?? fires.length, fires.length, rejected, JSON.stringify(rejects));
+    db.exec('COMMIT');
+  } catch (err) {
+    db.exec('ROLLBACK');
+    throw err;
+  }
+  return fires.length;
+}
+
+/** Replayable fires, largest first within each year (no geometry). */
+export function listSpreadFires(db) {
+  return db.prepare(`
+    SELECT id, year, cause, area_ha, base_date, hs_sdate, hs_edate, ag_sdate, ag_edate,
+           min_lon, min_lat, max_lon, max_lat, cnfdb_fire_id, fire_name, hotspot_count
+    FROM spread_fires ORDER BY year DESC, area_ha DESC`).all();
+}
+
+/** One fire with its rings, arrival grid, daily growth and hotspots (as compact columns). */
+export function getSpreadFire(db, id) {
+  const f = db.prepare('SELECT * FROM spread_fires WHERE id = ?').get(id);
+  if (!f) return null;
+  const hs = db.prepare('SELECT t, lon, lat, frp, sensor, ws, wd FROM spread_hotspots WHERE fire_id = ? ORDER BY t').all(id);
+  const cols = { t: [], lon: [], lat: [], frp: [], sensor: [], ws: [], wd: [] };
+  for (const h of hs) for (const k in cols) cols[k].push(h[k]);
+  return {
+    ...f, bbox: [f.min_lon, f.min_lat, f.max_lon, f.max_lat],
+    rings: JSON.parse(f.rings), grid: JSON.parse(f.grid), growth: JSON.parse(f.growth), hotspots: cols,
+  };
 }

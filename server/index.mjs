@@ -8,6 +8,8 @@
  *                                  perimeters and SPSA communities;
  *                                  real (non-simulated) pulls are stored in live_snapshots
  *   GET /api/live/history          list of stored live snapshots
+ *   GET /api/spread                fires with a True Spread Replay (NBAC perimeter + satellite hotspots)
+ *   GET /api/spread/<id>           one fire: perimeter rings, arrival grid, daily growth, hotspots
  *
  * Usage: node server/index.mjs [port]    (default 5173)
  */
@@ -15,7 +17,7 @@ import { createServer } from 'node:http';
 import { readFile, stat } from 'node:fs/promises';
 import { gzipSync } from 'node:zlib';
 import { extname, join, normalize, resolve, sep } from 'node:path';
-import { openDb, listSources, queryFires, DB_PATH } from './db.mjs';
+import { openDb, listSources, queryFires, listSpreadFires, getSpreadFire, DB_PATH } from './db.mjs';
 import { loadActiveIncidents, loadCommunities, loadPerimeters } from '../src/services/live.js';
 import { enrich } from '../src/data.js';
 import { CONFIG } from '../src/config.js';
@@ -82,6 +84,17 @@ async function handleApi(req, res, url) {
   if (p === '/api/live') return send(req, res, 200, await getLive(url.searchParams.has('refresh')));
   if (p === '/api/live/history') {
     return send(req, res, 200, db.prepare('SELECT id, fetched_at, source, label, incident_count FROM live_snapshots ORDER BY id DESC LIMIT 500').all());
+  }
+  if (p === '/api/spread') return send(req, res, 200, listSpreadFires(db));
+  const spread = p.match(/^\/api\/spread\/([\w-]+)$/);
+  if (spread) {
+    const key = `spread|${spread[1]}`;
+    if (!cache.has(key)) {
+      const fire = getSpreadFire(db, spread[1]);
+      if (!fire) return send(req, res, 404, { error: `No spread replay for '${spread[1]}'. Run "npm run load:spread".` });
+      cache.set(key, JSON.stringify(fire));
+    }
+    return send(req, res, 200, cache.get(key));
   }
   return send(req, res, 404, { error: 'Unknown endpoint' });
 }
