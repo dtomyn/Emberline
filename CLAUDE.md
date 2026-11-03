@@ -1,7 +1,9 @@
 # Emberline: project intent for agents
 
 Read this before changing anything. It records *why* the project is shaped the way it is.
-The README covers *how* to run and use it.
+The README covers *how* to run and use it. The full intent (purpose, principles, constraints,
+per-mode intent, data truth levels, decision log, status) is in [docs/intent/](docs/intent/README.md);
+update it in the same commit when an intent or decision changes.
 
 ## Purpose
 

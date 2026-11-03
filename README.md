@@ -24,6 +24,33 @@ Keyboard: `Space` play/pause · `←`/`→` step a week (a day in Spread) · `1`
 
 ---
 
+## Why it exists
+
+Emberline is a portfolio project built for the **Saskatchewan Public Safety Agency**. It has two
+goals of equal weight: **visual wow** (cinematic, animated, polished) and **full function** (real
+data, real services, nothing mocked up). Binding them together is a rule of **honesty**: anything
+simulated is labelled SIMULATED, burn circles are equal-area rather than perimeters, interpolated
+and illustrative details say so, and every figure in the story and film is computed from the
+loaded data.
+
+The full intent of the project, the purpose, principles, hard constraints, the intent of each mode,
+what each data source may claim, the decision log and current status, is documented in
+**[docs/intent/](docs/intent/README.md)**:
+
+| Document | Covers |
+|---|---|
+| [Purpose](docs/intent/01-purpose.md) | Audience, what success looks like, what Emberline is not |
+| [Principles](docs/intent/02-principles.md) | Wow + function, honesty in the UI, respect for the viewer |
+| [Constraints](docs/intent/03-constraints.md) | No data in GitHub, SQLite, no dependencies, real data first |
+| [Modes](docs/intent/04-modes.md) | What each mode and feature is for, and must never do |
+| [Data](docs/intent/05-data.md) | Why each source, and recorded vs. derived vs. interpolated vs. illustrative vs. simulated |
+| [Decisions](docs/intent/06-decisions.md) | The choices made, the alternatives, and why |
+| [Status](docs/intent/07-status.md) | Built, unfinished, next |
+
+Ideas for what comes next, with verified public data sources, are in [docs/IDEAS.md](docs/IDEAS.md).
+
+---
+
 ## Quick start
 
 Requires **Node.js 22.13+** (it uses the built-in `node:sqlite`). There are no npm dependencies.
@@ -234,7 +261,7 @@ another place to find the service URLs a seasonal viewer uses.
 
 ---
 
-### 4. Lightning, terrain and sound
+### 5. Lightning, terrain and sound
 
 - **Lightning history** comes from the CNFDB itself: fires with `CAUSE = 'N'`. Ignitions within
   1 day and 60 km are linked (transitively) into one storm. Places and dates are recorded; the hour
@@ -250,14 +277,14 @@ another place to find the service URLs a seasonal viewer uses.
 - **Sun**: computed in `src/sun.js` (no data needed). Saskatchewan stays on CST (UTC−6) all year.
 - **Sound** needs no data: it plays what's already loaded through the Web Audio API.
 
-### 5. Narration: local Kokoro text-to-speech
+### 6. Narration: local Kokoro text-to-speech
 
 The film's voice is [Kokoro](https://github.com/thewh1teagle/kokoro-onnx) (`kokoro-onnx`, model v1.0),
 run locally, with the same settings as the IRISIdeas project: voice `af_heart`, speed 0.97, 24 kHz,
 en-US phonemes with hand fixes for names it reads wrongly from their spelling (Saskatchewan, Regina,
 La Ronge, Île-à-la-Crosse). Years are spelled out before synthesis ("nineteen eighty-one").
 
-`npm run make:voice` uses the IRISIdeas install by default (`C:DevSourceIRISIdeas.venv`). Elsewhere, set
+`npm run make:voice` uses the IRISIdeas install by default (`C:\DevSource\IRISIdeas\.venv`). Elsewhere, set
 `KOKORO_PYTHON` to a Python with `kokoro-onnx` and `soundfile` installed and `KOKORO_DIR` to a folder with
 `kokoro-v1.0.onnx` and `voices-v1.0.bin`. Clips are matched to lines by their exact text, so when the data
 changes, any line without a matching clip falls back to the browser's speech voice. The title card and the film's
