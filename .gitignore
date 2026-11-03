@@ -1,0 +1,10 @@
+# Data is never committed: rebuild it locally with the load scripts (see README)
+data/
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+node_modules/
+.DS_Store
+Thumbs.db

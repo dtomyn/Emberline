@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "emberline",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["server/index.mjs", "5173"],
+      "port": 5173
+    }
+  ]
+}

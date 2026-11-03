@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Emberline · Saskatchewan Wildfire Atlas</title>
+  <meta name="description" content="An animated atlas of two decades of Saskatchewan wildfires, with live SPSA GIS data." />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M16 2c2 6 9 9 9 17a9 9 0 0 1-18 0c0-4 2-6 4-8 0 3 1 5 3 5-1-5 0-10 2-14z' fill='%23ff7a1f'/%3E%3C/svg%3E" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+  <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet" />
+  <link href="./src/styles.css" rel="stylesheet" />
+  <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+  <script src="https://unpkg.com/deck.gl@9.0.38/dist.min.js"></script>
+</head>
+<body>
+  <div id="map" aria-label="Map of Saskatchewan wildfires"></div>
+  <div class="vignette" aria-hidden="true"></div>
+
+  <!-- Intro -->
+  <section id="intro" aria-live="polite">
+    <canvas id="embers" aria-hidden="true"></canvas>
+    <div class="intro-inner">
+      <p class="eyebrow" id="intro-eyebrow">Saskatchewan wildfire atlas</p>
+      <h1>Ember<span>line</span></h1>
+      <p class="lede">Every recorded wildfire in Saskatchewan, replayed season by season as it happened, with live data from the Saskatchewan Public Safety Agency.</p>
+      <button id="enter" class="cta" disabled><span class="cta-label">Loading fire record…</span></button>
+      <p class="intro-foot" id="intro-foot"></p>
+    </div>
+  </section>
+
+  <!-- Brand + modes -->
+  <header class="topbar">
+    <div class="brand"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16 2c2 6 9 9 9 17a9 9 0 0 1-18 0c0-4 2-6 4-8 0 3 1 5 3 5-1-5 0-10 2-14z"/></svg>Ember<b>line</b></div>
+    <nav class="modes" role="tablist" aria-label="View mode">
+      <button role="tab" data-mode="timeline" aria-selected="true"><kbd>1</kbd>Replay</button>
+      <button role="tab" data-mode="explore"><kbd>2</kbd>Explore</button>
+      <button role="tab" data-mode="live"><kbd>3</kbd>Live<i class="live-dot"></i></button>
+      <button role="tab" data-mode="story"><kbd>4</kbd>Story</button>
+    </nav>
+    <button class="icon-btn" id="about-btn" aria-label="About the data" title="About the data">?</button>
+  </header>
+
+  <!-- Left: controls -->
+  <aside class="panel left" id="controls">
+    <div class="date-display">
+      <div class="date-year" id="date-year">2006</div>
+      <div class="date-day" id="date-day">April 1</div>
+    </div>
+
+    <div class="group" data-show="timeline explore">
+      <label class="glabel" for="source">Dataset</label>
+      <select id="source" class="source"></select>
+    </div>
+
+    <div class="group" data-show="explore">
+      <label class="glabel">Visualization</label>
+      <div class="seg-ctl" id="explore-viz">
+        <button data-viz="hex" class="on">3D Hex</button>
+        <button data-viz="heat">Heat</button>
+        <button data-viz="dots">Burns</button>
+      </div>
+      <label class="toggle"><input type="checkbox" id="orbit" /> <span>Orbit camera</span></label>
+    </div>
+
+    <div class="group" data-show="timeline explore">
+      <label class="glabel">Years <output id="yr-out">2006–2025</output></label>
+      <div class="range2">
+        <input type="range" id="yr-from" aria-label="From year" />
+        <input type="range" id="yr-to" aria-label="To year" />
+      </div>
+    </div>
+
+    <div class="group" data-show="timeline explore">
+      <label class="glabel">Cause</label>
+      <div class="chips" id="cause-chips"></div>
+    </div>
+
+    <div class="group" data-show="timeline explore">
+      <label class="glabel">Minimum size <output id="size-out">any</output></label>
+      <input type="range" id="min-size" min="0" max="5" step="0.25" value="0" aria-label="Minimum fire size (log scale)" />
+    </div>
+
+    <div class="group" data-show="timeline">
+      <label class="glabel">Burn memory</label>
+      <div class="seg-ctl" id="memory">
+        <button data-mem="season" class="on">This season</button>
+        <button data-mem="all">All years</button>
+      </div>
+    </div>
+
+    <div class="group live-only" data-show="live">
+      <label class="glabel">Data source</label>
+      <div id="live-source" class="live-source">Connecting…</div>
+      <label class="glabel">Alert radius <output id="radius-out">50 km</output></label>
+      <input type="range" id="alert-radius" min="10" max="150" step="5" value="50" aria-label="Community alert radius in kilometres" />
+      <button class="ghost" id="live-refresh">Refresh now</button>
+    </div>
+  </aside>
+
+  <!-- Right: stats -->
+  <aside class="panel right" id="stats">
+    <div class="kpis">
+      <div class="kpi"><span class="kv" id="k-fires">0</span><span class="kl" id="k-fires-l">fires</span></div>
+      <div class="kpi hot"><span class="kv" id="k-ha">0</span><span class="kl">hectares burned</span></div>
+      <div class="kpi"><span class="kv" id="k-active">0</span><span class="kl" id="k-active-l">burning now</span></div>
+    </div>
+    <div class="chart-row">
+      <div class="chart" id="donut"><h3>Cause</h3></div>
+      <div class="chart" id="clock"><h3>Fire clock</h3></div>
+    </div>
+    <div class="chart wide">
+      <h3>Hectares by season <small>click to jump</small></h3>
+      <div id="yearbars"></div>
+    </div>
+    <div class="largest" id="largest"></div>
+    <div class="threats" id="threats" data-show="live"></div>
+  </aside>
+
+  <!-- Bottom: timeline -->
+  <footer class="timeline" id="timeline">
+    <button class="play" id="play" aria-label="Play">
+      <svg viewBox="0 0 24 24" class="i-play"><path d="M7 4l13 8-13 8z"/></svg>
+      <svg viewBox="0 0 24 24" class="i-pause"><path d="M6 4h4v16H6zM14 4h4v16h-4z"/></svg>
+    </button>
+    <div class="track" id="track">
+      <canvas id="tl-canvas"></canvas>
+      <div class="playhead" id="playhead"><span id="playhead-label"></span></div>
+      <div class="hover-tip" id="hover-tip"></div>
+    </div>
+    <div class="speed seg-ctl" id="speed" aria-label="Playback speed">
+      <button data-speed="7">1×</button>
+      <button data-speed="21" class="on">3×</button>
+      <button data-speed="60">8×</button>
+      <button data-speed="140">20×</button>
+    </div>
+  </footer>
+
+  <!-- Year flash -->
+  <div class="year-flash" id="year-flash" aria-hidden="true"></div>
+
+  <!-- Fire detail card -->
+  <article class="card" id="card" hidden></article>
+
+  <!-- Story -->
+  <section class="story" id="story" hidden>
+    <div class="story-progress" id="story-progress"></div>
+    <p class="story-kicker" id="story-kicker"></p>
+    <h2 id="story-title"></h2>
+    <p id="story-body"></p>
+    <div class="story-nav">
+      <button class="ghost" id="story-prev">← Back</button>
+      <button class="cta small" id="story-next">Next →</button>
+    </div>
+  </section>
+
+  <!-- About -->
+  <dialog id="about">
+    <h2>About the data</h2>
+    <p><b>Historical record.</b> The Canadian National Fire Database (CNFDB, Natural Resources Canada), filtered to fires reported by Saskatchewan (<code>SRC_AGENCY = 'SK'</code>): ignition date, size, location and cause for every recorded wildfire. Load scripts put it, and optionally an SPSA CSV export, into a local SQLite database. <span id="about-source"></span></p>
+    <p><b>Live layers.</b> Community locations are fetched live from SPSA's public ArcGIS server (<code>gis.saskatchewan.ca/arcgis/rest/services/SPSA/Communities</code>). Active incidents come from an SPSA layer when one is published, then from the CWFIS national feed, and otherwise from a clearly labelled simulation.</p>
+    <p class="muted">Burn circles have the same area as the reported fire size; they are not perimeters. Synthetic "mock" data, when selected, is generated by <code>scripts/generate-mock.mjs</code>.</p>
+    <p class="muted">Keyboard: <kbd>Space</kbd> play/pause · <kbd>←</kbd>/<kbd>→</kbd> step a week · <kbd>1</kbd>–<kbd>4</kbd> modes · <kbd>Esc</kbd> close</p>
+    <form method="dialog"><button class="cta small">Close</button></form>
+  </dialog>
+
+  <div class="toast" id="toast" role="status"></div>
+
+  <script type="module" src="./src/main.js"></script>
+</body>
+</html>

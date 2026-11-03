@@ -1,0 +1,18 @@
+{
+  "name": "emberline-saskatchewan",
+  "version": "1.0.0",
+  "description": "Emberline: an animated atlas of Saskatchewan wildfires (CNFDB 1959–present), with live SPSA GIS data",
+  "type": "module",
+  "private": true,
+  "engines": { "node": ">=22.13" },
+  "scripts": {
+    "start": "node server/index.mjs",
+    "load:cnfdb": "node scripts/load-cnfdb.mjs",
+    "load:cnfdb:refresh": "node scripts/load-cnfdb.mjs --refresh",
+    "load:spsa": "node scripts/load-csv.mjs --source spsa",
+    "load:mock": "node scripts/generate-mock.mjs && node scripts/load-csv.mjs data/raw/spsa_fires_mock.csv --source mock",
+    "export:json": "node scripts/export-json.mjs",
+    "test": "node --test tests/"
+  },
+  "license": "MIT"
+}
