@@ -66,6 +66,11 @@ Re-check these before relying on them. Government endpoints change.
 
 ## Open threads / ideas not yet done
 
+The full idea backlog, with verified public data sources and a suggested build order, is in
+[docs/IDEAS.md](docs/IDEAS.md). Narration should use the local Kokoro setup from
+`C:\DevSource\IRISIdeas` (voice `af_heart`); generated audio belongs in gitignored `data/`.
+
+
 - Small-screen layout works but is unpolished.
 - Satellite perimeters are wired up but were empty during testing. Confirm they render in fire season.
 - Possible additions: fire-weather (FWI) overlays from CWFIS, decade comparison view, shareable
