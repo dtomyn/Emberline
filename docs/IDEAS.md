@@ -58,7 +58,11 @@ filter to SK on load and pre-compute per-fire daily fronts.
 
 ---
 
-## 2. Emberline Presents: narrated documentary mode (Kokoro voice)
+## 2. Emberline Presents: narrated documentary mode (Kokoro voice): core built, see ▶ Watch
+
+Built: data-built narration per chapter, `npm run make:voice` (Kokoro `af_heart`, cached by text), sentence-timed
+captions, word-timed cues, pause/skip, a synthetic-voice disclosure and a browser-voice fallback. Not yet built:
+the on-demand `/api/tts` narrator, video export and the ducking soundscape (the "wow extras" below).
 
 **What you see.** Press **Watch** and the app becomes a film. A warm voice opens:
 *"Since 1981, Saskatchewan has recorded twenty-six thousand wildfires…"* The camera flies,

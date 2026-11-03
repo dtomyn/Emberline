@@ -92,6 +92,19 @@ real detections, which the panel and About dialog say. Keep that wording if you 
 - `frame()` schedules the next frame first, so one exception can't freeze the app.
 - `src/sonify.js` starts its AudioContext only from the 🔊 click (browser autoplay rules).
 
+## Documentary mode (Emberline Presents, idea 2): built
+
+- `src/story.js` gives each chapter a `say` line (numbers written for speech via `src/narration.js`), `cues`
+  that fire on a spoken word, and a `hold`. `src/documentary.js` plays it: title card → chapters → end card.
+- Voice is **local Kokoro, the IRISIdeas voice** (`af_heart`, speed 0.97, en-us phonemes + `SOUNDS` fixes). Keep
+  `scripts/kokoro-voice.py`'s constants identical to IRISIdeas `scripts/render_explainer.py`.
+- `npm run make:voice` rebuilds the story **in Node from SQLite** (same storms and spread list as the browser) so
+  clip text matches what the browser builds; the manifest is keyed by exact line text. Change any wording or load
+  new data → rerun it, or those lines fall back to the browser voice (labelled).
+- The phonemizer reads "1981" as "nineteen hundred eighty one", so `speakable()` spells years out. Run Python
+  with `-I`; on Windows reconfigure stdout to UTF-8 before printing phonemes.
+- Pronunciation of names is unverified by ear beyond the IRISIdeas fixes. Listen before a demo.
+
 ## Open threads / ideas not yet done
 
 The full idea backlog, with verified public data sources and a suggested build order, is in

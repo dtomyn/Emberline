@@ -2,7 +2,7 @@
 import { CONFIG } from './config.js';
 import {
   CAUSES, SEASON_START_DOY, SEASON_END_DOY, enrich, lowerBound, summarize, byYear, weeklySeries,
-  tToDate, tToISO, seasonT, yearStartT, fmtHa, fmtInt, fmtDate, EPOCH, DAY,
+  tToDate, tToISO, seasonT, yearStartT, fmtHa, fmtInt, fmtDate, EPOCH, DAY, displayName,
 } from './data.js';
 import { CAUSE_COLORS, createCauseDonut, createFireClock, createYearBars, createTimelineCanvas, seasonAxis } from './charts.js';
 import { loadActiveIncidents, loadCommunities, loadPerimeters, haversineKm } from './services/live.js';
@@ -11,6 +11,7 @@ import { createSpreadMode } from './spread-mode.js';
 import { createScene } from './scene.js';
 import { createLightning, createLiveLightning, buildStorms } from './lightning.js';
 import { createSonifier } from './sonify.js';
+import { createDocumentary } from './documentary.js';
 
 const { MapboxOverlay, ScatterplotLayer, HeatmapLayer, HexagonLayer, PathLayer, LineLayer, TextLayer, GeoJsonLayer } = deck;
 const $ = (s) => document.querySelector(s);
@@ -40,15 +41,6 @@ const state = {
 };
 
 // ---------------------------------------------------------------- helpers
-export function displayName(f) {
-  if (!f) return '';
-  // CNFDB names look like "21HB-BELL" or "SK-2025-25LF-SHOE": drop the year/zone code and any trailing number
-  const code = /(?:^|-)\d{2}[A-Z]{2}-\s*([A-Za-z][A-Za-z' ]*?)\s*\d*$/;
-  const raw = (f.fire_name?.match(code) ?? [])[1] ?? (f.fire_name && !/\d{2}[A-Z]{2}-/.test(f.fire_name) ? f.fire_name : null) ?? (f.fire_id.match(code) ?? [])[1];
-  if (!raw || raw.length < 3 || /^[A-Z]{2}\d+$/.test(raw)) return f.fire_id;
-  const title = raw.trim().toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
-  return /fire$/i.test(title) ? title : `${title} fire`;
-}
 const lerp = (a, b, k) => a + (b - a) * k;
 const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
 const mix = (c1, c2, k) => c1.map((v, i) => lerp(v, c2[i], k));
@@ -97,13 +89,19 @@ async function useSource(source) {
   state.maxYear = years[years.length - 1];
   state.yrFrom = firstFull;
   state.yrTo = state.maxYear;
-  state.story = buildStory(state.all, displayName, { storms: buildStorms(state.all).storms });
+  state.storms = buildStorms(state.all).storms;
+  rebuildStory();
   for (const id of ['#yr-from', '#yr-to']) Object.assign($(id), { min: state.minYear, max: state.maxYear, step: 1 });
   $('#yr-from').value = state.yrFrom;
   $('#yr-to').value = state.yrTo;
   $('#about-source').textContent = `Loaded: ${SOURCE_LABELS[source] ?? source}, ${fmtInt(state.all.length)} fires, ${state.minYear}–${state.maxYear}.`;
   applyFilters();
   state.t = seasonT(state.yrFrom, SEASON_START_DOY);
+}
+
+/** The guided story (and documentary script), rebuilt when the dataset or the spread list changes. */
+function rebuildStory() {
+  if (state.all.length) state.story = buildStory(state.all, displayName, { storms: state.storms, spread: state.spreadList ?? [] });
 }
 
 function applyFilters({ keepTime = true } = {}) {
@@ -636,10 +634,30 @@ const app = {
   fly: (cam) => map.flyTo({ ...cam, duration: 3200, essential: true, curve: 1.5 }),
   jump: (t) => { state.t = t; scarCache.key = null; },
   play: (speed) => { if (speed) { state.speed = speed; syncSpeed(); } setPlaying(true); },
+  spread: (id) => {
+    spread.prefer(id);
+    setMode('spread');
+    if (spread.state.fire && spread.state.fire.id !== id) spread.open(id);
+  },
+  /** Freeze whatever is moving (replay, spread, orbit) and return a function that restores it. */
+  pause: () => {
+    const was = { playing: state.playing, spread: spread.state.playing, orbit: state.orbit };
+    setPlaying(false); spread.setPlaying(false); setOrbit(false);
+    return () => { if (was.playing) setPlaying(true); if (was.spread) spread.setPlaying(true); if (was.orbit) setOrbit(true); };
+  },
 };
 
-function showChapter(i) {
-  const chapters = state.story;
+const doc = createDocumentary({
+  app,
+  getStory: () => state.story,
+  showChapter,
+  onStart: () => { closeCard(); state.storyActive = true; document.body.classList.add('story-mode'); $('#story').hidden = false; },
+  onStop: () => exitStory(),
+  dataset: () => ({ label: SOURCE_LABELS[state.source] ?? state.source, simulated: state.source === 'mock' }),
+});
+
+function showChapter(i, { doc = false } = {}) {
+  const chapters = state.story.chapters;
   state.storyIndex = clamp(i, 0, chapters.length - 1);
   const ch = chapters[state.storyIndex];
   $('#story-progress').innerHTML = chapters.map((_, k) => `<i class="${k <= state.storyIndex ? 'on' : ''}"></i>`).join('');
@@ -651,6 +669,8 @@ function showChapter(i) {
   $('#story-prev').disabled = state.storyIndex === 0;
   $('#story-next').textContent = state.storyIndex === chapters.length - 1 ? 'Finish ✓' : 'Next →';
   ch.apply(app);
+  // In the documentary the cues wait for their spoken word; clicking through, they run at once
+  if (!doc) ch.cues?.forEach((c) => c.run(app));
 }
 function enterStory() {
   state.storyActive = true;
@@ -660,6 +680,7 @@ function enterStory() {
   showChapter(0);
 }
 function exitStory() {
+  if (doc.active) { doc.stop(); return; } // stopping the film calls back here
   if (!state.storyActive) return;
   state.storyActive = false;
   document.body.classList.remove('story-mode');
@@ -721,9 +742,10 @@ function wireControls() {
     exitStory();
     setMode(b.dataset.mode);
   }));
-  $('#story-next').addEventListener('click', () => (state.storyIndex === state.story.length - 1 ? (exitStory(), setMode('explore')) : showChapter(state.storyIndex + 1)));
+  $('#story-next').addEventListener('click', () => (state.storyIndex === state.story.chapters.length - 1 ? (exitStory(), setMode('explore')) : showChapter(state.storyIndex + 1)));
   $('#story-prev').addEventListener('click', () => showChapter(state.storyIndex - 1));
   $('#about-btn').addEventListener('click', () => $('#about').showModal());
+  $('#watch').addEventListener('click', () => doc.start());
 
   // Timeline scrubbing
   const track = $('#track');
@@ -745,6 +767,12 @@ function wireControls() {
 
   window.addEventListener('keydown', (e) => {
     if (e.target.matches('input, select, textarea')) return;
+    if (doc.active && [' ', 'ArrowRight', 'Escape'].includes(e.key)) {
+      e.preventDefault();
+      if (e.key === ' ') doc.toggle(); else if (e.key === 'ArrowRight') doc.next(); else exitStory();
+      return;
+    }
+    if ((e.key === 'w' || e.key === 'W') && $('#intro').classList.contains('gone')) doc.start();
     if (e.key === ' ') { e.preventDefault(); e.target.blur?.(); if (state.mode === 'timeline') setPlaying(!state.playing); if (state.mode === 'spread') spread.toggle(); }
     if (e.key === 'ArrowRight' && state.mode === 'timeline') { advance(7); scarCache.key = null; }
     if (e.key === 'ArrowLeft' && state.mode === 'timeline') { state.t = Math.max(seasonT(state.yrFrom, SEASON_START_DOY), state.t - 7); scarCache.key = null; }
@@ -807,19 +835,24 @@ async function boot() {
     return;
   }
   refreshLive().catch(() => {}); // warm live data in the background (communities power the detail card)
-  spread.loadList(); // opens the first fire itself if Spread mode is already showing
+  // Opens the first fire itself if Spread mode is already showing; the story then gains its spread chapter
+  spread.loadList().then((list) => { state.spreadList = list; rebuildStory(); });
 
-  btn.addEventListener('click', () => {
+  $('#intro-watch').disabled = false;
+  const enter = (watch) => {
     $('#intro').classList.add('gone');
     setTimeout(stopEmbers, 1400);
     map.flyTo({ center: [-105.7, 54.9], zoom: 4.85, pitch: 20, bearing: -4, duration: 3500, curve: 1.6 });
+    if (watch || start === 'watch') { doc.start(); return; }
     if (start === 'story') { enterStory(); return; }
     if (start.startsWith('spread')) spread.prefer(start.split('/')[1]);
     if (['explore', 'live'].includes(start) || start.startsWith('spread')) { setMode(start.split('/')[0]); return; }
     // Open on the most dramatic recent stretch of the record
     state.t = seasonT(Math.max(state.yrFrom, state.yrTo - 4), SEASON_START_DOY);
     setTimeout(() => setPlaying(true), 1800);
-  }, { once: true });
+  };
+  btn.addEventListener('click', () => enter(false), { once: true });
+  $('#intro-watch').addEventListener('click', () => enter(true), { once: true });
 }
 
 function toggleSound(on = !sound.enabled) {
@@ -830,5 +863,5 @@ function toggleSound(on = !sound.enabled) {
   if (on) toast('Sound on: each ignition plays a note. Bigger fires sound lower; lightning rings like a bell.');
 }
 
-window.emberline = { state, map, spread, scene, lightning, liveLightning, sound }; // handy for debugging from the console
+window.emberline = { state, map, spread, scene, lightning, liveLightning, sound, doc }; // handy for debugging from the console
 boot();

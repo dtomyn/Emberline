@@ -10,6 +10,8 @@
  *   GET /api/live/history          list of stored live snapshots
  *   GET /api/spread                fires with a True Spread Replay (NBAC perimeter + satellite hotspots)
  *   GET /api/spread/<id>           one fire: perimeter rings, arrival grid, daily growth, hotspots
+ *   GET /api/voice                 narration manifest (Kokoro clips made by "npm run make:voice"), keyed by line text
+ *   GET /api/voice/<hash>.ogg      one narration clip from data/voice
  *
  * Usage: node server/index.mjs [port]    (default 5173)
  */
@@ -26,8 +28,9 @@ const ROOT = resolve('.');
 const PORT = Number(process.argv[2] ?? process.env.PORT ?? 5173);
 const TYPES = {
   '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8',
-  '.css': 'text/css; charset=utf-8', '.json': 'application/json; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png',
+  '.css': 'text/css; charset=utf-8', '.json': 'application/json; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png', '.ogg': 'audio/ogg',
 };
+const VOICE_DIR = resolve('data/voice');
 // Only the front end is served; the database and raw downloads never are
 const PUBLIC = [/^\/$/, /^\/index\.html$/, /^\/src\/[\w\-/]+\.(js|css|svg|png)$/, /^\/data\/fires\.json$/];
 
@@ -37,7 +40,7 @@ const cache = new Map();
 function send(req, res, status, body, type = 'application/json; charset=utf-8', extra = {}) {
   let buf = Buffer.isBuffer(body) ? body : Buffer.from(typeof body === 'string' ? body : JSON.stringify(body));
   const headers = { 'Content-Type': type, 'Cache-Control': 'no-cache', ...extra };
-  if (buf.length > 1024 && /\bgzip\b/.test(req.headers['accept-encoding'] ?? '') && !/image/.test(type)) {
+  if (buf.length > 1024 && /\bgzip\b/.test(req.headers['accept-encoding'] ?? '') && !/image|audio/.test(type)) {
     buf = gzipSync(buf);
     headers['Content-Encoding'] = 'gzip';
   }
@@ -96,6 +99,12 @@ async function handleApi(req, res, url) {
     }
     return send(req, res, 200, cache.get(key));
   }
+  if (p === '/api/voice') {
+    const manifest = await readFile(join(VOICE_DIR, 'manifest.json'), 'utf8').catch(() => null);
+    return send(req, res, 200, manifest ?? { clips: {}, missing: 'No narration clips yet. Run "npm run make:voice".' });
+  }
+  const clip = p.match(/^\/api\/voice\/([0-9a-f]{16}\.ogg)$/);
+  if (clip) return send(req, res, 200, await readFile(join(VOICE_DIR, clip[1])), TYPES['.ogg'], { 'Cache-Control': 'max-age=86400' });
   return send(req, res, 404, { error: 'Unknown endpoint' });
 }
 

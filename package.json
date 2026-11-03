@@ -11,6 +11,7 @@
     "load:cnfdb:refresh": "node scripts/load-cnfdb.mjs --refresh",
     "load:spsa": "node scripts/load-csv.mjs --source spsa",
     "load:spread": "node scripts/load-spread.mjs",
+    "make:voice": "node scripts/make-voice.mjs",
     "load:mock": "node scripts/generate-mock.mjs && node scripts/load-csv.mjs data/raw/spsa_fires_mock.csv --source mock",
     "export:json": "node scripts/export-json.mjs",
     "test": "node --test tests/"

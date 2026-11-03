@@ -100,3 +100,14 @@ export function fmtHa(n) {
   return n.toFixed(1);
 }
 export const fmtDate = (iso) => new Date(iso + 'T12:00:00Z').toLocaleDateString('en-CA', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
+
+/** A readable fire name from a CNFDB id or name ("Shoe fire"), or the id when there is none. */
+export function displayName(f) {
+  if (!f) return '';
+  // CNFDB names look like "21HB-BELL" or "SK-2025-25LF-SHOE": drop the year/zone code and any trailing number
+  const code = /(?:^|-)\d{2}[A-Z]{2}-\s*([A-Za-z][A-Za-z' ]*?)\s*\d*$/;
+  const raw = (f.fire_name?.match(code) ?? [])[1] ?? (f.fire_name && !/\d{2}[A-Z]{2}-/.test(f.fire_name) ? f.fire_name : null) ?? (f.fire_id.match(code) ?? [])[1];
+  if (!raw || raw.length < 3 || /^[A-Z]{2}\d+$/.test(raw)) return f.fire_id;
+  const title = raw.trim().toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
+  return /fire$/i.test(title) ? title : `${title} fire`;
+}
