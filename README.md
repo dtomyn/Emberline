@@ -6,15 +6,20 @@ Saskatchewan Public Safety Agency (SPSA) and Natural Resources Canada.
 
 | Mode | What it does |
 |---|---|
-| **Replay** | Plays fire seasons day by day. Each ignition flashes, grows to its reported size and cools to a burn scar. Scrub the season timeline, change speed, filter by cause or size. |
+| **Replay** | Plays fire seasons day by day. Each ignition flashes, grows to its reported size and cools to a burn scar. **Lightning storms** strike first: a bolt lands at every lightning-caused fire, and clusters get a drifting storm cell. Turn on **Hear the season** (🔊 or `M`) and every ignition plays a note. Scrub the season timeline, change speed, filter by cause or size. |
 | **Spread** | True spread replay. Pick one of Saskatchewan's largest fires and watch it grow day by day, as satellites saw it, inside its real NBAC burned-area perimeter. Hot pixels flare as detections land, a glowing front (coloured by spread rate) sweeps across and cools to a char scar, embers drift with the day's recorded wind, and fronts merging slow the replay down. A director camera follows the fire. |
 | **Explore** | 3D hexagon columns (area burned), a heatmap, or every burn drawn at its true area, across any range of years. Optional orbit camera. |
-| **Live** | Active incidents (SPSA layer, then CWFIS satellite hotspots, then a labelled simulation), satellite fire perimeters and live SPSA community locations. Flags communities within an adjustable alert radius. |
+| **Live** | Active incidents (SPSA layer, then CWFIS satellite hotspots, then a labelled simulation), satellite fire perimeters, live SPSA community locations, and a looping animation of the last 3 hours of **Canadian Lightning Detection Network** flash density. Flags communities within an adjustable alert radius. |
 | **Story** | A guided tour whose numbers are all computed from the loaded data: the biggest season, lightning vs. human causes, the top 1% of fires, the live picture. |
 
 Click any fire for a detail card (size comparisons, nearest community, "replay this fire", and
 "true spread" for fires with a spread replay).
-Keyboard: `Space` play/pause · `←`/`→` step a week (a day in Spread) · `1`–`5` modes · `Esc` close.
+Every mode sits on **3D terrain** lit by the real sun for the date on screen: hillshade from the sun's
+azimuth, a day/night terminator that sweeps across the province, a sky that turns golden at dusk, and
+fires that glow brighter after dark. The **Scene** panel switches between an accelerated day cycle,
+day, golden hour and night, and sets the relief exaggeration.
+
+Keyboard: `Space` play/pause · `←`/`→` step a week (a day in Spread) · `1`–`5` modes · `M` sound · `Esc` close.
 
 ---
 
@@ -59,6 +64,10 @@ index.html, src/          front end (MapLibre GL + deck.gl from CDN, ES modules,
   spread.js               fire-growth algorithms shared with the loader (projection, raster, arrival time, merges)
   charts.js               animated SVG/canvas charts (cause donut, fire clock, season bars, timeline)
   story.js                guided story; all figures computed from the data
+  scene.js                3D terrain, sun-lit hillshade, sky, day/night terminator
+  sun.js                  solar position (altitude, azimuth) and Saskatchewan time helpers
+  lightning.js            storm grouping, bolts and storm cells; live CLDN lightning loop
+  sonify.js               Hear the Season: Web Audio notes, crackle, rumble, thunder
   data.js                 enrichment and aggregation helpers
   config.js               every external endpoint, overridable by query string
   services/arcgis.js      ArcGIS REST client: catalog crawl, layer metadata, paged GeoJSON queries
@@ -214,6 +223,22 @@ The public SPSA map viewers (<https://www.saskpublicsafety.ca/active-incidents/m
 another place to find the service URLs a seasonal viewer uses.
 
 ---
+
+### 4. Lightning, terrain and sound
+
+- **Lightning history** comes from the CNFDB itself: fires with `CAUSE = 'N'`. Ignitions within
+  1 day and 60 km are linked (transitively) into one storm. Places and dates are recorded; the hour
+  of each strike within its day and the storm cell's shape are illustrative, and the UI says so.
+- **Live lightning**: ECCC MSC GeoMet WMS `https://geo.weather.gc.ca/geomet`, layer
+  `Lightning_2.5km_Density` (CLDN flash density, 10-minute frames for the last 3 hours, CORS-enabled).
+  The app reads the time dimension from GetCapabilities, loads each frame once as a blob, and counts
+  coloured pixels inside Saskatchewan to say honestly whether any lightning was detected.
+- **Terrain**: Terrarium elevation tiles from AWS Open Data
+  (`s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png`), used as MapLibre 3D terrain
+  and as hillshade. deck.gl draws at sea level, so the app lifts every deck layer to the ground height
+  at the map centre; the residual misregistration is the local height difference × exaggeration.
+- **Sun**: computed in `src/sun.js` (no data needed). Saskatchewan stays on CST (UTC−6) all year.
+- **Sound** needs no data: it plays what's already loaded through the Web Audio API.
 
 ## Static hosting (optional)
 

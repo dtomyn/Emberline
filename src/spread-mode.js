@@ -632,5 +632,7 @@ export function createSpreadMode({ map, toast, displayName, onOpen }) {
     toggle() { setPlaying(!S.playing); },
     step(days) { if (S.fire) { setPlaying(false); seek(S.t + days); } },
     get hash() { return S.fire ? `spread/${S.fire.id}` : 'spread'; },
+    /** The calendar moment shown, for lighting (null before a fire is open). */
+    get date() { return S.fire ? dateAt(S.fire, S.t) : null; },
   };
 }

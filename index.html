@@ -84,6 +84,12 @@
     </div>
 
     <div class="group" data-show="timeline">
+      <label class="glabel">Lightning storms</label>
+      <label class="toggle"><input type="checkbox" id="lightning-toggle" checked /> <span>Bolts at lightning-caused ignitions</span></label>
+      <p class="hint">Fires within 1 day and 60 km form a storm. Places and dates are recorded; the hour of each strike is illustrative.</p>
+    </div>
+
+    <div class="group" data-show="timeline">
       <label class="glabel">Burn memory</label>
       <div class="seg-ctl" id="memory">
         <button data-mem="season" class="on">This season</button>
@@ -105,12 +111,29 @@
       <label class="toggle"><input type="checkbox" id="spread-show-ghost" checked /> <span>Final perimeter outline</span></label>
     </div>
 
+    <div class="group" data-show="timeline spread explore live">
+      <label class="glabel">Scene <output id="sky-clock">☀ --:--</output></label>
+      <div class="seg-ctl" id="sky" aria-label="Sky lighting">
+        <button data-sky="auto" class="on" title="Day/night cycle on the date shown (real clock in Live)">Cycle</button>
+        <button data-sky="day">Day</button>
+        <button data-sky="golden">Golden</button>
+        <button data-sky="night">Night</button>
+      </div>
+      <label class="toggle"><input type="checkbox" id="terrain" checked /> <span>3D terrain</span></label>
+      <label class="glabel">Relief <output id="relief-out">2×</output></label>
+      <input type="range" id="relief" min="1" max="8" step="0.5" value="2" aria-label="Terrain exaggeration" />
+    </div>
+
     <div class="group live-only" data-show="live">
       <label class="glabel">Data source</label>
       <div id="live-source" class="live-source">Connecting…</div>
       <label class="glabel">Alert radius <output id="radius-out">50 km</output></label>
       <input type="range" id="alert-radius" min="10" max="150" step="5" value="50" aria-label="Community alert radius in kilometres" />
       <button class="ghost" id="live-refresh">Refresh now</button>
+      <label class="glabel cldn-head">Live lightning <output id="cldn-time"></output></label>
+      <label class="toggle"><input type="checkbox" id="cldn-toggle" checked /> <span>CLDN flash density, last 3 h</span></label>
+      <p class="hint" id="cldn-status">Canadian Lightning Detection Network via ECCC GeoMet.</p>
+      <button class="ghost small" id="cldn-refresh">Reload frames</button>
     </div>
   </aside>
 
@@ -166,6 +189,10 @@
       <div class="playhead" id="playhead"><span id="playhead-label"></span></div>
       <div class="hover-tip" id="hover-tip"></div>
     </div>
+    <button class="sound-btn" id="sound" aria-pressed="false" title="Hear the season (M)" aria-label="Hear the season">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z"/><path class="w1" d="M16 9.5a3.5 3.5 0 0 1 0 5"/><path class="w2" d="M18.5 7a7 7 0 0 1 0 10"/></svg>
+      <span class="eq" aria-hidden="true"><i></i><i></i><i></i></span>
+    </button>
     <div class="speed seg-ctl" id="speed" aria-label="Playback speed">
       <button data-speed="7">1×</button>
       <button data-speed="21" class="on">3×</button>
@@ -201,6 +228,7 @@
 
   <!-- Year flash -->
   <div class="year-flash" id="year-flash" aria-hidden="true"></div>
+  <div class="sky-flash" id="sky-flash" aria-hidden="true"></div>
 
   <!-- Fire detail card -->
   <article class="card" id="card" hidden></article>
@@ -223,8 +251,11 @@
     <p><b>Historical record.</b> The Canadian National Fire Database (CNFDB, Natural Resources Canada), filtered to fires reported by Saskatchewan (<code>SRC_AGENCY = 'SK'</code>): ignition date, size, location and cause for every recorded wildfire. Load scripts put it, and optionally an SPSA CSV export, into a local SQLite database. <span id="about-source"></span></p>
     <p><b>Live layers.</b> Community locations are fetched live from SPSA's public ArcGIS server (<code>gis.saskatchewan.ca/arcgis/rest/services/SPSA/Communities</code>). Active incidents come from an SPSA layer when one is published, then from the CWFIS national feed, and otherwise from a clearly labelled simulation.</p>
     <p><b>True spread replay.</b> Final burned-area perimeters come from NRCan's National Burned Area Composite (NBAC). Satellite hotspots (MODIS 1 km, VIIRS 375 m) come from the CWFIS archive. Each detection inside a perimeter seeds an arrival-time grid, and the glowing front is the line where that arrival time equals the moment shown. Between detections the shape is interpolated. Ember drift follows the wind recorded with each day's hotspots. Load it with <code>npm run load:spread</code>.</p>
+    <p><b>Lightning storms.</b> Each lightning-caused fire in the record gets a bolt where it started. Ignitions within 1 day and 60 km are grouped into a storm with a drifting cell. Dates and places are recorded; the hour of each strike and the cell's shape are illustrative. Live mode loops the last 3 hours of Canadian Lightning Detection Network flash density from ECCC MSC GeoMet.</p>
+    <p><b>Terrain and sky.</b> Elevation from public Terrarium tiles (AWS Open Data). Shading and the day/night line follow the real sun position for the date shown, in Saskatchewan time (CST, no daylight saving). The cycle clock is accelerated.</p>
+    <p><b>Hear the season.</b> Each ignition plays a note: pitch from size (bigger is lower), timbre from cause (lightning is a bell, human a wooden mallet), stereo position from longitude. The crackle and rumble follow how much is burning.</p>
     <p class="muted">Burn circles have the same area as the reported fire size; they are not perimeters. Synthetic "mock" data, when selected, is generated by <code>scripts/generate-mock.mjs</code>.</p>
-    <p class="muted">Keyboard: <kbd>Space</kbd> play/pause · <kbd>←</kbd>/<kbd>→</kbd> step a week · <kbd>1</kbd>–<kbd>5</kbd> modes · <kbd>Esc</kbd> close</p>
+    <p class="muted">Keyboard: <kbd>Space</kbd> play/pause · <kbd>←</kbd>/<kbd>→</kbd> step a week · <kbd>1</kbd>–<kbd>5</kbd> modes · <kbd>M</kbd> sound · <kbd>Esc</kbd> close</p>
     <form method="dialog"><button class="cta small">Close</button></form>
   </dialog>
 

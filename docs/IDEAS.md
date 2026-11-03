@@ -120,7 +120,7 @@ for "people living within X km."
 
 ---
 
-## 4. Lightning Storms (strikes you can see)
+## 4. Lightning Storms (strikes you can see): built, see Replay and Live
 
 **What you see.** In Replay, lightning-caused ignitions that cluster in space and time are
 grouped into **storm events**. A dark cell crosses the map, bolts strike (a quick flash and
@@ -214,7 +214,7 @@ aren't published as open data, so the label must say so.
 
 ---
 
-## 10. Hear the Season (sonification)
+## 10. Hear the Season (sonification): built, see the 🔊 button in Replay
 
 **What you see and hear.** Every ignition plays a note: lightning a bright chime, human-caused
 a soft wooden tone; bigger fires go lower and louder; latitude sets stereo position. A
@@ -242,7 +242,7 @@ answer shows "how this was calculated."
 
 ---
 
-## 12. Living Terrain and Sky
+## 12. Living Terrain and Sky: terrain and day/night lighting built (smoke plumes not yet)
 
 **What you see.** The flat basemap becomes **3D terrain** (Canadian Shield ridges, river
 valleys) with a sun that moves through each replayed day. Night falls and the active fires

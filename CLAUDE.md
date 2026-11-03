@@ -77,6 +77,21 @@ Re-check these before relying on them. Government endpoints change.
 (tested in `tests/spread.test.mjs`) and the UI in `src/spread-mode.js`. The front is interpolated between
 real detections, which the panel and About dialog say. Keep that wording if you change the method.
 
+## Lightning, sound and scene (ideas 4, 10, 12): built
+
+- `src/lightning.js`: storms are lightning ignitions linked within 1 day / 60 km. Bolts and cells run
+  on the **wall clock** once triggered (a replay day lasts milliseconds at speed), so strikes stay
+  visible at any speed. Strike hour and cell shape are illustrative; keep the UI wording that says so.
+- Live lightning: GeoMet `Lightning_2.5km_Density` has a 3-hour, 10-minute time dimension and sends
+  `Access-Control-Allow-Origin: *`. Frames are fetched once as blobs; the loop waits for each
+  `updateImage` to land, because overlapping loads abort.
+- `src/scene.js`: install on `style.load` (not `isStyleLoaded()`, which also waits for basemap tiles).
+  MapLibre rejects `hillshade-illumination-direction` of 360, so wrap the azimuth.
+- With 3D terrain on, `main.js` clones every deck layer with a z-translation of `map.transform.elevation`;
+  keep that if you add layers, or they float off the terrain.
+- `frame()` schedules the next frame first, so one exception can't freeze the app.
+- `src/sonify.js` starts its AudioContext only from the 🔊 click (browser autoplay rules).
+
 ## Open threads / ideas not yet done
 
 The full idea backlog, with verified public data sources and a suggested build order, is in

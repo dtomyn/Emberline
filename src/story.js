@@ -1,6 +1,6 @@
 // Guided story. Every number is computed from the loaded dataset, so the narrative stays
 // true whichever source (CNFDB, SPSA export, mock) is selected.
-import { summarize, byYear, fmtHa, fmtInt, MONTHS, seasonT, SEASON_START_DOY } from './data.js';
+import { summarize, byYear, fmtHa, fmtInt, fmtDate, MONTHS, seasonT, SEASON_START_DOY } from './data.js';
 
 const SASK_AREA_HA = 65_103_600; // 651,036 km²
 
@@ -11,7 +11,7 @@ function weightedCenter(list) {
   return w ? [x / w, y / w] : [-105.8, 55];
 }
 
-export function buildStory(fires, displayName) {
+export function buildStory(fires, displayName, { storms = [] } = {}) {
   const yearsAll = [...new Set(fires.map((f) => f.year))].sort((a, b) => a - b);
   // First year of continuous record: the first year with at least 100 fires
   const yearly0 = byYear(fires, yearsAll);
@@ -35,6 +35,15 @@ export function buildStory(fires, displayName) {
   const onePct = sorted.slice(0, Math.max(1, Math.round(sorted.length / 100)));
   const onePctHa = onePct.reduce((s, f) => s + f.size_ha, 0);
   const pct = (a, b) => Math.round((a / (b || 1)) * 100);
+  // The record's biggest lightning event, from the storm grouping in lightning.js
+  const storm = storms.find((s) => s.fires[0].year >= firstFull) ?? null;
+  const stormLine = (s) => {
+    const days = Math.round(s.t1 - s.t0) + 1;
+    const when = fmtDate(s.fires[0].ignition_date);
+    return days > 1
+      ? `Over <b>${days} days</b> from ${when}, one lightning outbreak sparked <b>${fmtInt(s.count)} fires</b>.`
+      : `On <b>${when}</b>, a single storm sparked <b>${fmtInt(s.count)} fires</b>.`;
+  };
   const decadeSplit = lastYear - 9;
   const recent = core.filter((f) => f.year >= decadeSplit).reduce((s, f) => s + f.size_ha, 0);
   const prior = core.filter((f) => f.year >= decadeSplit - 10 && f.year < decadeSplit).reduce((s, f) => s + f.size_ha, 0);
@@ -63,10 +72,19 @@ export function buildStory(fires, displayName) {
     {
       kicker: 'Natural causes',
       title: 'Struck by lightning',
-      body: `Lightning starts <b>${pct(L.count, all.count)}%</b> of Saskatchewan's fires, yet those fires account for <b>${pct(L.ha, all.ha)}%</b> of all area burned. Remote strikes in the boreal shield grow large before anyone reaches them. Lightning fires peak in <b>${peak(0)}</b>.`,
+      body: `Lightning starts <b>${pct(L.count, all.count)}%</b> of Saskatchewan's fires, yet those fires account for <b>${pct(L.ha, all.ha)}%</b> of all area burned. Lightning fires peak in <b>${peak(0)}</b>.` +
+        (storm ? ` ${stormLine(storm)} Watch it strike.` : ''),
       apply: (app) => {
-        app.set({ mode: 'explore', viz: 'dots', orbit: false, causes: ['Lightning'], minSize: 0, yrFrom: firstFull, yrTo: lastYear });
-        app.fly({ center: [-105.8, 56.2], zoom: 5.0, pitch: 20, bearing: 0 });
+        if (!storm) {
+          app.set({ mode: 'explore', viz: 'dots', orbit: false, causes: ['Lightning'], minSize: 0, yrFrom: firstFull, yrTo: lastYear });
+          app.fly({ center: [-105.8, 56.2], zoom: 5.0, pitch: 20, bearing: 0 });
+          return;
+        }
+        const y = Number(storm.fires[0].ignition_date.slice(0, 4));
+        app.set({ mode: 'timeline', memory: 'season', causes: ['Lightning', 'Human', 'Unknown'], minSize: 0, yrFrom: y, yrTo: y });
+        app.jump(storm.t0 - 1.5);
+        app.fly({ center: storm.center, zoom: 6.1, pitch: 50, bearing: -15 });
+        app.play(7);
       },
     },
     {

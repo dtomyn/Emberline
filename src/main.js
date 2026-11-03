@@ -2,12 +2,15 @@
 import { CONFIG } from './config.js';
 import {
   CAUSES, SEASON_START_DOY, SEASON_END_DOY, enrich, lowerBound, summarize, byYear, weeklySeries,
-  tToDate, tToISO, seasonT, yearStartT, fmtHa, fmtInt, fmtDate,
+  tToDate, tToISO, seasonT, yearStartT, fmtHa, fmtInt, fmtDate, EPOCH, DAY,
 } from './data.js';
 import { CAUSE_COLORS, createCauseDonut, createFireClock, createYearBars, createTimelineCanvas, seasonAxis } from './charts.js';
 import { loadActiveIncidents, loadCommunities, loadPerimeters, haversineKm } from './services/live.js';
 import { buildStory } from './story.js';
 import { createSpreadMode } from './spread-mode.js';
+import { createScene } from './scene.js';
+import { createLightning, createLiveLightning, buildStorms } from './lightning.js';
+import { createSonifier } from './sonify.js';
 
 const { MapboxOverlay, ScatterplotLayer, HeatmapLayer, HexagonLayer, PathLayer, LineLayer, TextLayer, GeoJsonLayer } = deck;
 const $ = (s) => document.querySelector(s);
@@ -94,7 +97,7 @@ async function useSource(source) {
   state.maxYear = years[years.length - 1];
   state.yrFrom = firstFull;
   state.yrTo = state.maxYear;
-  state.story = buildStory(state.all, displayName);
+  state.story = buildStory(state.all, displayName, { storms: buildStorms(state.all).storms });
   for (const id of ['#yr-from', '#yr-to']) Object.assign($(id), { min: state.minYear, max: state.maxYear, step: 1 });
   $('#yr-from').value = state.yrFrom;
   $('#yr-to').value = state.yrTo;
@@ -111,6 +114,7 @@ function applyFilters({ keepTime = true } = {}) {
   state.exploreData = state.filtered.filter((f) => f.year >= state.yrFrom && f.year <= state.yrTo);
   state.axis = seasonAxis(state.ys);
   timeline.draw(weeklySeries(state.filtered, state.ys), state.ys);
+  lightning.setFires(state.filtered);
   if (!keepTime || state.t < seasonT(state.yrFrom, SEASON_START_DOY) || state.t > seasonT(state.yrTo, SEASON_END_DOY)) {
     state.t = seasonT(state.yrFrom, SEASON_START_DOY);
   }
@@ -140,7 +144,25 @@ map.on('load', () => {
   }
 });
 map.on('dragstart', () => { if (state.orbit) setOrbit(false); });
+map.on('move', () => { if (map.getTerrain()) dirty = true; }); // the terrain lift follows the map centre
 const spread = createSpreadMode({ map, toast, displayName, onOpen: (f) => { if (state.mode === 'spread') history.replaceState(null, '', `#spread/${f.id}`); } });
+// The sun is drawn for the day on screen: the replay date, the spread date, or today
+const scene = createScene({
+  map, getMode: () => state.mode,
+  getDate: () => (state.mode === 'timeline' ? new Date(EPOCH + Math.floor(state.t) * DAY + 12 * 3600000) : state.mode === 'spread' ? spread.date : new Date()),
+});
+const sound = createSonifier();
+const lightning = createLightning({
+  onStrike: ({ intensity }) => {
+    sound.thunder(intensity);
+    if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      const el = $('#sky-flash');
+      el.style.setProperty('--flash', String(0.05 + 0.1 * intensity));
+      el.classList.remove('on'); void el.offsetWidth; el.classList.add('on');
+    }
+  },
+});
+const liveLightning = createLiveLightning({ map, statusEl: $('#cldn-status') });
 
 const outlineLayer = () => [
   new PathLayer({ id: 'sk-glow', data: [{ path: SASK_OUTLINE }], getPath: (d) => d.path, getColor: [255, 120, 40, 40], widthMinPixels: 8, parameters: ADDITIVE }),
@@ -174,6 +196,7 @@ function timelineLayers(now) {
   const heat = (age) => (age < 2 ? mix([255, 250, 225], [255, 205, 110], age / 2) : age < 10 ? mix([255, 205, 110], [255, 110, 30], (age - 2) / 8) : mix([255, 110, 30], [190, 35, 15], clamp((age - 10) / 20, 0, 1)));
   const fade = (age) => (age < 12 ? 1 : clamp(1 - (age - 12) / 18, 0, 1));
   const flicker = (d) => 0.82 + 0.18 * Math.sin(pulse * 9 + d.t * 13.7) * Math.sin(pulse * 3.1 + d.radius);
+  const glowK = 1 + 0.55 * scene.night; // fires read brighter in the dark
 
   return [
     new ScatterplotLayer({
@@ -186,13 +209,13 @@ function timelineLayers(now) {
     new ScatterplotLayer({
       id: 'halo', data: active, getPosition: (d) => d.position,
       getRadius: (d) => d.radius * growth(d) * 1.9 + 2500, radiusMinPixels: 6,
-      getFillColor: (d) => { const a = t - d.t; return [...heat(a), 70 * fade(a) * flicker(d)]; },
+      getFillColor: (d) => { const a = t - d.t; return [...heat(a), Math.min(255, 70 * glowK * fade(a) * flicker(d))]; },
       parameters: ADDITIVE, updateTriggers: { getRadius: t, getFillColor: [t, pulse] },
     }),
     new ScatterplotLayer({
       id: 'core', data: active, getPosition: (d) => d.position, pickable: true,
       getRadius: (d) => d.radius * growth(d), radiusMinPixels: 2.2,
-      getFillColor: (d) => { const a = t - d.t; return [...heat(a), 235 * fade(a) * flicker(d) + 20]; },
+      getFillColor: (d) => { const a = t - d.t; return [...heat(a), Math.min(255, 235 * glowK * fade(a) * flicker(d) + 20)]; },
       parameters: ADDITIVE, updateTriggers: { getRadius: t, getFillColor: [t, pulse] },
     }),
     new ScatterplotLayer({
@@ -347,25 +370,45 @@ async function refreshLive(force = false) {
 // ---------------------------------------------------------------- render loop
 let dirty = true, lastFrame = performance.now(), lastStats = 0;
 function frame(now) {
-  const dt = Math.min(0.1, (now - lastFrame) / 1000);
+  requestAnimationFrame(frame); // schedule first, so one bad frame can't stop the animation
+  const dt = Math.max(0, Math.min(0.1, (now - lastFrame) / 1000));
   lastFrame = now;
+  const prevT = state.t;
   if (state.playing && state.mode === 'timeline') advance(dt * state.speed);
+  if (state.mode === 'timeline' && state.playing) seasonEvents(prevT, state.t, now, dt);
+  scene.update(now);
+  if (state.mode === 'live') liveLightning.tick(now);
   if (state.orbit && state.mode === 'explore') map.setBearing(map.getBearing() + dt * 5);
   if (state.mode === 'explore' && state.viz === 'hex' && state.hexScale < 60) { state.hexScale = Math.min(60, state.hexScale + dt * 70); dirty = true; }
   tickCounters(dt);
   const animated = state.mode === 'timeline' || state.mode === 'live' || state.mode === 'spread';
   if (animated || dirty) {
     const layers = [...outlineLayer()];
-    if (state.mode === 'timeline') layers.push(...timelineLayers(now));
+    if (state.mode === 'timeline') layers.push(...lightning.under(now), ...timelineLayers(now), ...lightning.over(now, ADDITIVE, map.getZoom(), map.getCenter().lat));
     else if (state.mode === 'explore') layers.push(...exploreLayers());
     else if (state.mode === 'live') layers.push(...liveLayers(now));
     else if (state.mode === 'spread') layers.push(...spread.layers(now, dt));
-    overlay.setProps({ layers });
+    // With 3D terrain, deck.gl still draws at sea level: lift everything to the ground height at
+    // the map centre so fires sit on the terrain (residual error is the local height difference)
+    const lift = map.getTerrain() ? map.transform.elevation || 0 : 0;
+    overlay.setProps({ layers: lift ? layers.map((l) => l.clone({ modelMatrix: [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, lift, 1] })) : layers });
     dirty = false;
   }
   if (now - lastStats > 120) { updateStats(); lastStats = now; }
   updatePlayhead();
-  requestAnimationFrame(frame);
+}
+
+// Lightning strikes and notes for ignitions crossed this frame (skipped for scrubs and season jumps)
+function seasonEvents(prevT, t, now, dt) {
+  if (!(t > prevT) || t - prevT > 20) return;
+  lightning.tick(prevT, t, now, state.speed);
+  if (!sound.enabled) return;
+  const f = state.filtered;
+  sound.ignitions(f.slice(lowerBound(f, prevT + 1e-9), lowerBound(f, t + 1e-9)), dt);
+  const r0 = lowerBound(f, t - 14), r1 = lowerBound(f, t + 1e-9);
+  let ha = 0;
+  for (let i = r0; i < r1; i++) ha += f[i].size_ha;
+  sound.ambience(r1 - r0, ha);
 }
 
 function advance(days) {
@@ -382,6 +425,7 @@ function advance(days) {
 
 function setPlaying(on) {
   state.playing = on;
+  if (!on) sound.silence();
   $('#play').classList.toggle('playing', on);
   $('#play').setAttribute('aria-label', on ? 'Pause' : 'Play');
   if (on && state.t >= seasonT(state.yrTo, SEASON_END_DOY) - 1) state.t = seasonT(state.yrFrom, SEASON_START_DOY);
@@ -568,6 +612,8 @@ function setMode(mode) {
     else if (state.live.simulated) toast('Off-season: no active incidents published. Showing a labelled simulation.');
   }
   if (mode !== 'explore') setOrbit(false);
+  liveLightning.show(mode === 'live' && $('#cldn-toggle').checked);
+  if (mode !== 'timeline') lightning.reset();
   if (mode === 'spread' && was !== 'spread') spread.enter();
   if (mode !== 'spread' && was === 'spread') spread.exit();
   scarCache.key = null;
@@ -630,6 +676,10 @@ function syncYearInputs() { $('#yr-from').value = state.yrFrom; $('#yr-to').valu
 function syncCauseChips() { $$('.chip').forEach((c) => c.classList.toggle('on', state.causes.has(c.dataset.cause))); }
 
 function wireControls() {
+  $('#sound').addEventListener('click', () => toggleSound());
+  $('#lightning-toggle').addEventListener('change', (e) => lightning.setEnabled(e.target.checked));
+  $('#cldn-toggle').addEventListener('change', (e) => liveLightning.show(e.target.checked && state.mode === 'live'));
+  $('#cldn-refresh').addEventListener('click', () => liveLightning.refresh());
   $('#cause-chips').innerHTML = CAUSES.map((c, i) => `<button class="chip on" data-cause="${c}" style="--c:${CAUSE_COLORS[i]}" aria-pressed="true"><i></i>${c}</button>`).join('');
   $$('.chip').forEach((chip) => chip.addEventListener('click', () => {
     const c = chip.dataset.cause;
@@ -703,6 +753,7 @@ function wireControls() {
     if (['1', '2', '3', '4'].includes(e.key)) { exitStory(); setMode(['timeline', 'spread', 'explore', 'live'][Number(e.key) - 1]); }
     if (e.key === '5') enterStory();
     if (e.key === 'Escape') { closeCard(); exitStory(); }
+    if (e.key === 'm' || e.key === 'M') toggleSound();
   });
 }
 
@@ -771,5 +822,13 @@ async function boot() {
   }, { once: true });
 }
 
-window.emberline = { state, map, spread }; // handy for debugging from the console
+function toggleSound(on = !sound.enabled) {
+  sound.setEnabled(on);
+  $('#sound').classList.toggle('on', on);
+  $('#sound').setAttribute('aria-pressed', String(on));
+  $('#sound').title = on ? 'Sound on (M)' : 'Hear the season (M)';
+  if (on) toast('Sound on: each ignition plays a note. Bigger fires sound lower; lightning rings like a bell.');
+}
+
+window.emberline = { state, map, spread, scene, lightning, liveLightning, sound }; // handy for debugging from the console
 boot();
