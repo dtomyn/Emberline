@@ -62,7 +62,8 @@ filter to SK on load and pre-compute per-fire daily fronts.
 
 Built: data-built narration per chapter, `npm run make:voice` (Kokoro `af_heart`, cached by text), sentence-timed
 captions, word-timed cues, pause/skip, a synthetic-voice disclosure and a browser-voice fallback. Not yet built:
-the on-demand `/api/tts` narrator, video export and the ducking soundscape (the "wow extras" below).
+the on-demand `/api/tts` narrator and video export. A ducking crackling-fire bed (`src/fireplace.js`) is built:
+livelier in the big chapters, with the chapter's real fires as pops; it does not yet follow the replayed day.
 
 **What you see.** Press **Watch** and the app becomes a film. A warm voice opens:
 *"Since 1981, Saskatchewan has recorded twenty-six thousand wildfires…"* The camera flies,

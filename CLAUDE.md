@@ -104,6 +104,11 @@ real detections, which the panel and About dialog say. Keep that wording if you 
 - The phonemizer reads "1981" as "nineteen hundred eighty one", so `speakable()` spells years out. Run Python
   with `-I`; on Windows reconfigure stdout to UTF-8 before printing phonemes.
 - Pronunciation of names is unverified by ear beyond the IRISIdeas fixes. Listen before a demo.
+- The film's sound bed is a **crackling wood fire** (`src/fireplace.js`), chosen by the owner over music. It must stay
+  **subtle**: `LEVEL`/`DUCKED` were set by rendering it offline (`prerender`) and comparing RMS with the Kokoro clips
+  (fire ≈ −34 to −38 dBFS between lines, −43 to −46 under the voice; voice ≈ −22.6). Re-measure if you change
+  levels, rates or voices. The louder pops are real fires (`chapter.sound.fires`), and About says so.
+  The AudioContext is created inside the Watch click, or browsers block it.
 
 ## Open threads / ideas not yet done
 

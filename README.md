@@ -11,7 +11,7 @@ Saskatchewan Public Safety Agency (SPSA) and Natural Resources Canada.
 | **Explore** | 3D hexagon columns (area burned), a heatmap, or every burn drawn at its true area, across any range of years. Optional orbit camera. |
 | **Live** | Active incidents (SPSA layer, then CWFIS satellite hotspots, then a labelled simulation), satellite fire perimeters, live SPSA community locations, and a looping animation of the last 3 hours of **Canadian Lightning Detection Network** flash density. Flags communities within an adjustable alert radius. |
 | **Story** | A guided tour whose numbers are all computed from the loaded data: the biggest season, a true spread replay of its largest fire, lightning vs. human causes, the top 1% of fires, the live picture. |
-| **▶ Watch** | **Emberline Presents**, the same story as a narrated film (about 2½ minutes) that plays inside the live app. A synthetic voice (local Kokoro, see below) reads each chapter while the camera flies, the replay starts on the word "Watch", numbers count up and captions run. Pause at any moment (`Space`) and the map is yours to explore from that view; `→` skips a chapter. Also on the intro screen as **Watch the film**. |
+| **▶ Watch** | **Emberline Presents**, the same story as a narrated film (about 2½ minutes) that plays inside the live app. A synthetic voice (local Kokoro, see below) reads each chapter while the camera flies, the replay starts on the word "Watch", numbers count up and captions run. A wood fire crackles quietly underneath and ducks under the voice (the flame button mutes it). Pause at any moment (`Space`) and the map is yours to explore from that view; `→` skips a chapter. Also on the intro screen as **Watch the film**. |
 
 Click any fire for a detail card (size comparisons, nearest community, "replay this fire", and
 "true spread" for fires with a spread replay).
@@ -69,6 +69,7 @@ index.html, src/          front end (MapLibre GL + deck.gl from CDN, ES modules,
   story.js                guided story; all figures computed from the data, with a spoken line and cues per chapter
   documentary.js          Emberline Presents: the narrated film (clips, captions, word-timed cues, pause/skip)
   narration.js            spoken-number formatting, sentence split, cue timing (shared with make-voice)
+  fireplace.js            the film's quiet crackling-fire bed (roar, hiss, crackles, real fires as pops), ducking
   scene.js                3D terrain, sun-lit hillshade, sky, day/night terminator
   sun.js                  solar position (altitude, azimuth) and Saskatchewan time helpers
   lightning.js            storm grouping, bolts and storm cells; live CLDN lightning loop
@@ -261,6 +262,15 @@ La Ronge, Île-à-la-Crosse). Years are spelled out before synthesis ("nineteen 
 `kokoro-v1.0.onnx` and `voices-v1.0.bin`. Clips are matched to lines by their exact text, so when the data
 changes, any line without a matching clip falls back to the browser's speech voice. The title card and the film's
 control bar always say which voice is speaking, and that it is synthetic.
+
+**Fire sound.** Like the IRISIdeas films, the narration has a subtle bed underneath: a wood fire crackling,
+synthesized live with Web Audio from seeded noise (`src/fireplace.js`, no recordings). A low roar breathes slowly,
+a faint hiss sizzles, and crackles come at random, mostly tiny ticks, sometimes in bursts, now and then a snap.
+The fire burns livelier in the big chapters (the worst season, the spread replay) and dies to embers under the end
+card. Its few louder pops in each chapter are that chapter's largest real fires, in the order they started
+(bigger fires knock deeper, west on the left). It ducks under every spoken line: measured against the Kokoro clips
+(RMS about −22.6 dBFS), it sits near −34 to −38 dBFS between lines and −43 to −46 dBFS under the voice. It pauses
+with the film, fades out at the end, and the flame button mutes it (remembered).
 
 ## Static hosting (optional)
 

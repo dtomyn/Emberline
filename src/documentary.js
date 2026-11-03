@@ -10,14 +10,24 @@
  * to each line by its exact text. A line without a clip falls back to the browser's speech voice,
  * and with no speech at all the captions run on estimated timing. The title card and control bar
  * say which voice is speaking, and that it is synthetic.
+ *
+ * Sound: a quiet wood fire crackling underneath (fireplace.js), livelier in the big chapters, with a
+ * pop for each of the chapter's largest real fires. It ducks under every spoken line; the flame
+ * button mutes it, and the choice is remembered.
  */
 import { CONFIG } from './config.js';
 import { storyLines, cueTime } from './narration.js';
+import { createFireplace } from './fireplace.js';
 
 const $ = (s) => document.querySelector(s);
 const CHARS_PER_SEC = 15; // speaking rate used to estimate timing when there is no clip
 const TITLE_HOLD = 1.2;
 const DEFAULT_HOLD = 2;
+const SOUND_KEY = 'emberline.filmFire';
+const END_FADE = 9; // seconds the fire takes to fade out under the end card
+
+function soundPref() { try { return localStorage.getItem(SOUND_KEY) !== 'off'; } catch { return true; } }
+function saveSoundPref(on) { try { localStorage.setItem(SOUND_KEY, on ? 'on' : 'off'); } catch { /* private mode */ } }
 
 class Cancelled extends Error {}
 
@@ -29,6 +39,7 @@ export function createDocumentary({ app, getStory, showChapter, onStart, onStop,
   let line = null;        // the line being spoken: { pause, resume, finish }
   let held = null;        // the hold timer being waited on: { finish }
   let skipping = false;   // set by next() until the following chapter starts
+  let fire = null;        // the crackling fire under the film
   let resumeScene = null;
   const blobs = new Map(); // clip file → object URL
 
@@ -186,7 +197,9 @@ export function createDocumentary({ app, getStory, showChapter, onStart, onStop,
       });
     });
     marks = line.marks;
+    fire?.duck(true);
     await line.finished;
+    fire?.duck(false);
     line = null;
     if (token !== run) throw new Cancelled();
     cues.forEach((c, k) => fired.has(k) || c.run(app)); // a cue whose word was skipped still runs
@@ -226,7 +239,7 @@ export function createDocumentary({ app, getStory, showChapter, onStart, onStop,
     $('#doc-pause').classList.toggle('paused', p);
     $('#doc-pause').setAttribute('aria-label', p ? 'Resume' : 'Pause');
     document.body.classList.toggle('doc-paused', p);
-    if (p) { line?.pause(); resumeScene = app.pause(); } else { line?.resume(); resumeScene?.(); resumeScene = null; }
+    if (p) { line?.pause(); fire?.pause(); resumeScene = app.pause(); } else { line?.resume(); fire?.resume(); resumeScene?.(); resumeScene = null; }
   }
 
   /** Number counters in the chapter text count up from zero, as in a broadcast graphic. */
@@ -257,6 +270,11 @@ export function createDocumentary({ app, getStory, showChapter, onStart, onStop,
     document.body.classList.add('doc-mode');
     $('#doc-bar').hidden = false;
     onStart();
+    // Created inside the click, so the browser lets it play
+    fire = createFireplace();
+    fire?.setMuted(!soundPref());
+    fire?.begin();
+    syncSound();
     await loadManifest();
     const story = getStory();
     const lines = storyLines(story);
@@ -276,6 +294,7 @@ export function createDocumentary({ app, getStory, showChapter, onStart, onStop,
         [...$('#doc-progress').children].forEach((el, k) => el.classList.toggle('on', k <= i));
         skipping = false;
         showChapter(i, { doc: true });
+        fire?.chapter(i, ch.sound?.fires, ch.sound);
         countUp($('#story-body'));
         await narrate(lines[i + 1], ch.cues ?? [], token);
         await hold(ch.hold ?? DEFAULT_HOLD);
@@ -284,8 +303,11 @@ export function createDocumentary({ app, getStory, showChapter, onStart, onStop,
       caption('');
       alive();
       card('end', story, voice);
+      fire?.end();
       await narrate(lines[lines.length - 1], [], token);
       caption('');
+      fire?.stop(END_FADE);
+      fire = null;
     } catch (err) {
       if (!(err instanceof Cancelled)) throw err;
     }
@@ -308,6 +330,8 @@ export function createDocumentary({ app, getStory, showChapter, onStart, onStop,
     line?.finish();
     held?.finish();
     if ('speechSynthesis' in globalThis) speechSynthesis.cancel();
+    fire?.stop(quiet ? 0.3 : 1.2);
+    fire = null;
     caption('');
     $('#doc-card').hidden = true;
     $('#doc-bar').hidden = true;
@@ -318,6 +342,18 @@ export function createDocumentary({ app, getStory, showChapter, onStart, onStop,
   $('#doc-pause').addEventListener('click', () => setPaused(!paused));
   $('#doc-next').addEventListener('click', next);
   $('#doc-exit').addEventListener('click', () => stop());
+  function syncSound() {
+    const on = soundPref();
+    $('#doc-fire').classList.toggle('off', !on);
+    $('#doc-fire').setAttribute('aria-pressed', String(on));
+    $('#doc-fire').title = on ? 'Fire sound on (click to mute)' : 'Fire sound off (click to play)';
+  }
+  $('#doc-fire').addEventListener('click', () => {
+    const on = !soundPref();
+    saveSoundPref(on);
+    fire?.setMuted(!on);
+    syncSound();
+  });
   // Some browsers load speech voices lazily; asking early means they are ready by the first line
   if ('speechSynthesis' in globalThis) speechSynthesis.getVoices();
 
