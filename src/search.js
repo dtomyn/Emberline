@@ -334,7 +334,8 @@ export function parseText(input, { communities = [] } = {}) {
       if (key === 'http' || key === 'https') { rest.push(tok.raw); continue; }
     }
     if (tok.quoted) { rest.push(`"${tok.val}"`); continue; }
-    if (STOP.has(t)) continue;
+    // "at" is a stopword, except in "at least" / "at most" (handled with the comparisons below)
+    if (STOP.has(t) && !(t === 'at' && /^(least|most)$/i.test(toks[i + 1]?.val ?? ''))) continue;
 
     // near / around <community or coordinates>
     if (t === 'near' || t === 'around' || t === 'close') {

@@ -64,6 +64,9 @@ test('parseText handles ranges, decades, seasons, keys and comparisons', () => {
   assert.equal(parse('>5k ha').patch.sizeMin, 5000);
   assert.equal(parse('<5ha').patch.sizeMax, 5);
   assert.equal(parse('over 2 km2').patch.sizeMin, 200);
+  // "at" is a stopword, but not in "at least" / "at most" (nothing may leak into free text)
+  assert.deepEqual([parse('lightning at least 10,000 ha').patch.sizeMin, parse('lightning at least 10,000 ha').text], [10000, '']);
+  assert.deepEqual([parse('at most 50 ha').patch.sizeMax, parse('at most 50 ha').text], [50, '']);
   assert.deepEqual([parse('1000-5000ha').patch.sizeMin, parse('1000-5000ha').patch.sizeMax], [1000, 5000]);
   assert.equal(parse('more than 2 weeks').patch.durMin, 15);
   assert.equal(parse('days:<3').patch.durMax, 2);

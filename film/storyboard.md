@@ -52,29 +52,29 @@ where every number just seen traces back to a named public source. For an SPSA a
 
 | # | ≈Time | Scene | On screen | Camera / graphics | Cursor / keys | Narration (gist) | Sound |
 |---|---|---|---|---|---|---|---|
-| 1 | 0:00 | **Cold open** | Black, embers rising | Kinetic number counts to {fires}, then {hectares} | Hidden | "Since {first}, Saskatchewan has recorded {fires} wildfires. Together they burned {ha} hectares, equal to {pct} percent of the province. This is every one of them." | Pad swells, risers, hits |
+| 1 | 0:00 | **Cold open** | Black, embers rising | Kinetic number counts to {fires}, then {hectares} | Hidden | "Since {first}, Saskatchewan has recorded {fires} wildfires. Together they burned {ha} hectares, an area equal to {pct} percent of the province, though some ground has burned more than once. This is every one of them." | Pad swells, risers, hits |
 | 2 | 0:17 | **Title** | Burn transition reveals the Emberline intro | Slow push-in on the title | Glides to *Enter the atlas*, click | "Emberline is an atlas of that record, rebuilt from public data and replayed as it happened." | Burn roar, sub impact, click, big whoosh |
 | 3 | 0:27 | **Replay** | {top year} plays day by day: fires flare, glow, cool to scars | Zoom on the season bars, then the counters; kinetic {top ha}; letterbox off | Clicks the {top year} bar, then *3×* | "Pick any season… {top year} was the worst in the record: {n} fires, {ha} hectares, {k} times an average year." | Clicks, fire bed, hit |
 | 4 | 0:52 | **One fire** | The season's largest fire opens its card | Spotlight the card, zoom on the comparison | Clicks *Largest so far*, hovers the comparison | "Every fire can be opened. The largest that year… about {k} times the area of Saskatoon." | Click, whoosh |
 | 5 | 1:05 | **True spread** | NBAC perimeter + satellite detections rebuild how it grew | Chip 02, letterbox while it burns, zoom on the growth chart | Clicks *True spread*, *8 d/s* | "Satellites detected it {n} times over {d} days… the front interpolated between real sightings." | Fire bed rises |
 | 6 | 1:30 | **Lightning** | Scrub to the record's biggest lightning outbreak; bolts and storm cell | Chip 03, zoom on the scrub track, letterbox for the flight | Drags the playhead, clicks *1×*, *Play* | "Lightning starts {pct}% of fires but {pct}% of the area… one outbreak sparked {n} of them." | Thunder on every bolt |
-| 7 | 1:50 | **Search** | Burn transition into Search; a plain-language query becomes filters; results ignite in date order | Chip 04, spotlight the box, zoom on the chips and KPIs, kinetic {share}% | Clicks the box, **types** "lightning over 10,000 ha", hovers a result | "Ask it a question in plain words… {n} fires, {pct of count}% of the record, burned {share}% of everything." | Key taps, clicks, riser + hit |
+| 7 | 1:50 | **Search** | Burn transition into Search; a plain-language query becomes filters; results ignite in date order | Chip 04, spotlight the box, zoom on the chips and KPIs, kinetic {share}% | Clicks the box, **types** "lightning at least 10,000 ha", hovers a result | "Ask it a question in plain words… {n} fires, {pct of count}% of the record, burned {share}% of everything." (the share is of every fire since the record's first year, as the Search tab counts it) | Key taps, clicks, riser + hit |
 | 8 | 2:17 | **Explore** | *Explore in 3D*: the search becomes 3D hexagon columns; then *Show all fires*: every season rises and orbits | Chip 05, push in on the columns, kinetic 1% stat | Clicks *Explore in 3D*, *Show all fires*, *Orbit camera* | "One click turns a search into columns… The largest one percent of fires, {n}, burned {pct}% of it all." | Whoosh, clicks, hit |
-| 9 | 2:42 | **Live** | SPSA communities, satellite/agency incidents, alert radius links | Chip 06, zoom on the slider | Clicks *Live*, drags the alert radius | "Live mode reads SPSA's own map services and the national satellite feeds…" (line chosen at render time: real count or labelled simulation) | Clicks |
+| 9 | 2:42 | **Live** | SPSA communities, satellite/agency incidents, alert radius links | Chip 06, zoom on the slider | Clicks *Live*, drags the alert radius | "Live mode reads SPSA's own map services and the national satellite feeds…" (line chosen at render time: SPSA fires, CWFIS hotspots, or the labelled simulation) | Clicks |
 | 10 | 3:00 | **Read the rings** | The fire-scarred tree cross-section burns open from the pith | Chip 07, push in on the rings, spotlight the list, zoom on the card and the live reply | Hovers a scar (tooltip), hovers the CNFDB bore, clicks *SPSA communities*, clicks *Ask the source now* | "Every number traces back to where it came from… each ring a year, the scars its worst seasons… it asks SPSA's own server, right now. {sources} sources, {records} real records, and not one data file in the repository." | Click, soft crackle, hit |
 | 11 | 3:35 | **End card** | Burn transition to the title, the record in one line, the sources | Full frame | Hidden | "Emberline. Every fire, from the record." | Burn roar, pad resolves, sub impact |
 
 Rules the script keeps:
 
 - The spread line keeps "interpolated between real detections" (CLAUDE.md).
-- Province share uses Saskatchewan's total area, 651,036 km² (Statistics Canada), and says "equal to", since
+- Province share uses Saskatchewan's total area, 651,036 km² (Statistics Canada), and says "an area equal to" and that some ground has burned more than once, since
   fires reburn the same ground.
 - The search figures are computed with `src/search.js`, the same module the Search tab runs, so the spoken
   numbers are the ones on screen.
 - The ring summary (sources, records) is computed the same way the Sources view computes its header, from
   `/api/provenance` and `src/provenance.js`.
 - The live line is chosen at render time: if the app is showing a labelled simulation the narrator says so;
-  if real incidents or hotspots are loaded it counts them. The ping reply is never read aloud (it is live).
+  if SPSA incidents are loaded it counts active fires; if only CWFIS hotspots are, it calls them satellite hotspots, not fires. The ping reply is never read aloud (it is live).
 
 ## Outputs (all in gitignored `data/film/`)
 
