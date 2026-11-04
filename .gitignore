@@ -1,11 +1,57 @@
-# Data is never committed: rebuild it locally with the load scripts (see README)
+# Data is never committed: rebuild it locally with the load scripts (see README).
+# data/ holds wildfire.db, raw downloads (CNFDB, NBAC, hotspots), JSON exports,
+# Kokoro voice clips and rendered film output.
 data/
 *.db
 *.db-journal
 *.db-wal
 *.db-shm
+*.sqlite
+*.sqlite3
 
+# Downloaded or extracted source archives that land outside data/ by accident
+*.zip
+*.shp
+*.shx
+*.dbf
+*.prj
+*.cpg
+
+# Generated media (voice and film render to data/, but keep strays out too)
+*.wav
+*.mp3
+*.mp4
+*.webm
+
+# Node (no dependencies today, but keep it clean if any are added)
 node_modules/
+npm-debug.log*
+.npm/
+
+# Python (scripts/kokoro-voice.py, film/render.py, film/sound.py)
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+
+# Claude Code: share launch.json, keep personal settings local
+.claude/settings.local.json
+
+# Logs and temp files
+*.log
+*.tmp
+tmp/
+
+# Editors and OS
+.vscode/
+.idea/
+*.swp
+*~
 .DS_Store
 Thumbs.db
-__pycache__/
+desktop.ini
