@@ -2,10 +2,12 @@
 //
 // film/render.py loads Emberline with film/clock.js (virtual time), then this module. The scenes in
 // film/scenes.js are generator functions: they move a drawn cursor (the real mouse follows it, so
-// hovers and clicks are the app's own), start narration lines, push a video camera in and out, and
-// raise titles. render.py calls Film.step(ms) once per frame, performs the mouse events it returns,
-// waits for map tiles, and captures the crop rectangle it returns. Sound effects and voice timings are
-// collected here and mixed by film/sound.py afterwards.
+// hovers and clicks are the app's own), type into the app (real keystrokes), start narration lines,
+// push a video camera in and out, and lay motion graphics over the frame: chapter chips, numbers that
+// count up, a spotlight that dims everything but one control, cinema bars, and burn transitions that
+// eat the frame to black and burn back out. render.py calls Film.step(ms) once per frame, performs the
+// mouse and key events it returns, waits for map tiles, and captures the crop rectangle it returns.
+// Sound effects and voice timings are collected here and mixed by film/sound.py afterwards.
 import { cueTime, splitSentences } from '/src/narration.js';
 import { buildScenes } from './scenes.js';
 
@@ -16,6 +18,7 @@ const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
 const lerp = (a, b, k) => a + (b - a) * k;
 export const inOut = (k) => (k < 0.5 ? 4 * k * k * k : 1 - (-2 * k + 2) ** 3 / 2);
 const CLICKABLE = 'button, a, [role=tab], input, select, label, .sl-row, .ybar, .threat, #track, #spread-track';
+const BAR = 78; // letterbox bar height, at full
 
 // ------------------------------------------------------------------ overlay
 const style = document.createElement('style');
@@ -30,6 +33,11 @@ style.textContent = `
 #film .f-ripple { position: absolute; width: 18px; height: 18px; margin: -9px 0 0 -9px; border-radius: 50%; border: 2px solid #ffd27a; box-shadow: 0 0 18px #ff7a1f, inset 0 0 10px rgba(255,122,31,.6); animation: f-ripple-grow .7s ease-out forwards; }
 @keyframes f-ripple-grow { from { transform: scale(.4); opacity: 1; } to { transform: scale(3.4); opacity: 0; } }
 #film .f-black { position: absolute; inset: 0; background: #000; opacity: 0; }
+#film .f-vig { position: absolute; inset: 0; background: radial-gradient(ellipse 75% 70% at 50% 50%, transparent 62%, rgba(0,0,0,.34) 100%); }
+#film .f-bar { position: absolute; left: 0; right: 0; height: 0; background: #000; }
+#film .f-bar.top { top: 0; } #film .f-bar.bot { bottom: 0; }
+#film canvas.f-burn, #film canvas.f-embers { position: absolute; left: 0; top: 0; width: ${W}px; height: ${H}px; }
+#film canvas.f-embers { opacity: 0; }
 #film .f-chip { position: absolute; left: 304px; top: 92px; display: flex; align-items: center; gap: 14px; padding: 12px 20px 12px 14px; border-radius: 16px;
   background: linear-gradient(135deg, rgba(20,12,8,.88), rgba(10,10,14,.82)); border: 1px solid rgba(255,140,60,.35); backdrop-filter: blur(12px);
   box-shadow: 0 10px 40px -10px rgba(255,90,20,.45); opacity: 0; transform: translateY(-14px); transition: opacity .5s, transform .6s cubic-bezier(.2,.9,.2,1.2); }
@@ -40,7 +48,22 @@ style.textContent = `
 #film .f-chip::after { content: ''; position: absolute; left: 14px; right: 14px; bottom: -1px; height: 2px; border-radius: 2px; background: linear-gradient(90deg, transparent, #ffd27a, #ff5a1f, transparent);
   transform: scaleX(0); transition: transform 1.1s .25s cubic-bezier(.2,.8,.2,1); }
 #film .f-chip.on::after { transform: scaleX(1); }
-  filter: drop-shadow(0 0 30px rgba(255,100,20,.55)); font-variant-numeric: tabular-nums; }
+#film .f-stat { position: absolute; transform: translate(-50%, -50%); text-align: center; white-space: nowrap; opacity: 0; filter: blur(14px);
+  transition: opacity .7s, filter .9s cubic-bezier(.2,.8,.2,1), transform .9s cubic-bezier(.2,.8,.2,1); }
+#film .f-stat.on { opacity: 1; filter: none; }
+#film .f-stat.off { opacity: 0; filter: blur(10px); transform: translate(-50%, -62%); transition-duration: .6s; }
+#film .f-stat .k { font: 600 15px/1 'JetBrains Mono', monospace; letter-spacing: .32em; text-transform: uppercase; color: #ffb36b; margin-bottom: 14px; }
+#film .f-stat .v { font-weight: 700; line-height: .95; letter-spacing: -.045em; font-variant-numeric: tabular-nums;
+  background: linear-gradient(180deg, #fff6e2 0%, #ffc27a 42%, #ff6a1f 100%); -webkit-background-clip: text; color: transparent;
+  filter: drop-shadow(0 0 28px rgba(255,100,20,.55)); }
+#film .f-stat .l { margin-top: 12px; font-size: 26px; font-weight: 500; color: #fbeee2; letter-spacing: -.005em; text-shadow: 0 2px 16px rgba(0,0,0,.8); }
+#film .f-stat i { display: block; height: 2px; margin: 16px auto 0; width: 62%; border-radius: 2px; background: linear-gradient(90deg, transparent, #ffd27a, #ff5a1f, transparent);
+  transform: scaleX(0); transition: transform 1.4s .3s cubic-bezier(.2,.8,.2,1); }
+#film .f-stat.on i { transform: scaleX(1); }
+#film .f-stat.plate { padding: 22px 34px 20px; border-radius: 20px; background: linear-gradient(135deg, rgba(20,12,8,.9), rgba(8,8,12,.84));
+  border: 1px solid rgba(255,140,60,.32); box-shadow: 0 18px 60px -12px rgba(0,0,0,.8), 0 0 50px -20px rgba(255,90,20,.6); }
+#film .f-spot { position: absolute; left: 0; top: 0; width: 0; height: 0; opacity: 0; border-radius: 14px; border: 2px solid rgba(255,200,130,.95);
+  box-shadow: 0 0 0 4000px rgba(4,3,3,.58), 0 0 26px 2px rgba(255,122,31,.75), inset 0 0 18px rgba(255,122,31,.35); }
 #film .f-card { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; opacity: 0; transition: opacity 1.2s;
   background: radial-gradient(ellipse at 50% 60%, #2a0f05 0%, #0b0606 55%, #030304 100%); }
 #film .f-card.on { opacity: 1; }
@@ -57,10 +80,18 @@ document.head.appendChild(style);
 
 const root = document.createElement('div');
 root.id = 'film';
+// Page space (zooms with the camera): the spotlight, the cursor, click ripples.
+// Frame space (.f-hud, counter-scaled to the crop, so it stays put on screen): everything else.
 root.innerHTML = `
+  <div class="f-spot"></div>
   <div class="f-hud">
+    <div class="f-vig"></div>
     <div class="f-chip"><span class="n"></span><div><div class="k"></div><div class="t"></div></div></div>
     <div class="f-card"><canvas class="embers"></canvas><div><h1>Ember<span>line</span></h1><p></p><div class="src"></div><div class="url"></div></div></div>
+    <canvas class="f-burn"></canvas>
+    <canvas class="f-embers"></canvas>
+    <div class="f-stats"></div>
+    <div class="f-bar top"></div><div class="f-bar bot"></div>
     <div class="f-black"></div>
   </div>
   <div class="f-cursor" style="opacity:0">
@@ -69,8 +100,8 @@ root.innerHTML = `
   </div>`;
 document.body.appendChild(root);
 const $ = (s) => root.querySelector(s);
-// The camera's crop also draws the HUD, counter-scaled so titles stay the same size on screen
-const hud = $('.f-hud'), cursorEl = $('.f-cursor'), black = $('.f-black');
+const hud = $('.f-hud'), cursorEl = $('.f-cursor'), black = $('.f-black'), spotEl = $('.f-spot');
+const bars = [$('.f-bar.top'), $('.f-bar.bot')];
 // The arrow's tip sits at (5, 3) in its 30 px box; the hand's fingertip lands about there too
 const hand = cursorEl.querySelector('.hand');
 hand.style.transform = 'translate(0, 0)';
@@ -80,6 +111,7 @@ const F = {
   t: 0, done: false, scene: null, sceneAt: [],
   cursor: { x: W * 0.82, y: H * 0.88, shown: false, down: false },
   cam: { cx: W / 2, cy: H / 2, z: 1 },
+  spot: { x: W / 2, y: H / 2, w: 0, h: 0, o: 0 }, bars: 0, keySeed: 11,
   tasks: [], events: [], sfx: [], voiced: [], voiceEnd: 0, lines: [], durations: {}, marks: {}, current: null,
 };
 
@@ -152,13 +184,44 @@ const f = {
     F.events.push('up'); F.cursor.down = false; f.sfx('click', { down: false, x: F.cursor.x / W });
   },
 
+  /** Scroll a panel by `by` px (or until `into` is fully on screen), easing like a trackpad flick. */
+  *scroll(panel, { by = null, into = null, margin = 40, dur = 0.9 } = {}) {
+    const el = typeof panel === 'string' ? document.querySelector(panel) : panel;
+    if (into) { const r = rect(into); by = Math.max(0, r.bottom - (H - margin)) || Math.min(0, r.top - margin); }
+    const from = el.scrollTop, to = clamp(from + (by ?? 0), 0, el.scrollHeight - el.clientHeight);
+    if (Math.abs(to - from) < 1) return;
+    f.sfx('whoosh', { dur: dur * 0.8, dir: 1 });
+    yield* f.tween(dur, (k) => { el.scrollTop = lerp(from, to, k); });
+  },
+
+  // ---- keyboard
+  /** Type into whatever has focus, one real keystroke at a time (render.py presses the keys). */
+  *type(text, { cps = 13 } = {}) {
+    for (const ch of text) {
+      F.events.push({ key: ch });
+      f.sfx('key', { x: F.cursor.x / W, space: ch === ' ' });
+      F.keySeed = (F.keySeed * 16807) % 2147483647;
+      yield (1 / cps) * (0.7 + 0.6 * (F.keySeed / 2147483647)) * (ch === ' ' ? 1.25 : 1);
+    }
+  },
+  /** Press a named key (Enter, Escape…). */
+  *press(key) { F.events.push({ key }); f.sfx('key', { x: F.cursor.x / W, space: true }); yield 0.12; },
+
   // ---- video camera (a crop of the page; 1 = the full frame)
+  /** Move the camera to `target` at zoom z (no target: back out to the full frame). A new move replaces one in flight. */
   *zoom(target, { z = 1.3, dur = 1.3, whoosh = true, ...opts } = {}) {
-    const [x, y] = target ? point(target, opts) : [W / 2, H / 2];
+    const [x, y] = !target ? [W / 2, H / 2] : typeof target === 'function' ? target() : point(target, opts);
+    const job = (F.camJob = (F.camJob ?? 0) + 1);
     const from = { ...F.cam };
     const goal = target ? z : 1;
     if (whoosh && Math.abs(goal - from.z) > 0.04) f.sfx('whoosh', { dur, dir: goal > from.z ? 1 : -1 });
-    yield* f.tween(dur, (k) => { F.cam.cx = lerp(from.cx, x, k); F.cam.cy = lerp(from.cy, y, k); F.cam.z = lerp(from.z, goal, k); });
+    const t0 = F.t;
+    while (F.camJob === job) {
+      const k = inOut(clamp((F.t - t0) / dur, 0, 1));
+      F.cam.cx = lerp(from.cx, x, k); F.cam.cy = lerp(from.cy, y, k); F.cam.z = lerp(from.z, goal, k);
+      if (k >= 1) return;
+      yield 0;
+    }
   },
   zoomTo(target, opts) { f.spawn(f.zoom(target, opts)); },
   zoomOut(opts = {}) { f.spawn(f.zoom(null, opts)); },
@@ -180,6 +243,70 @@ const f = {
     const c = F.current;
     const at = c?.marks ? cueTime(c.sentences, c.marks, w) : null;
     if (at !== null && c.at + at > F.t) yield c.at + at - F.t;
+  },
+
+  // ---- motion graphics
+  /**
+   * A big number that counts up, with a kicker above and a label below, centred on `at` (frame px).
+   * Stays `hold` seconds (null: until f.clearStats()). A riser plays while it counts and a hit when it lands.
+   */
+  stat({ value, from = 0, label = '', kicker = '', at = [W / 2, H / 2], size = 120, dur = 1.8, hold = 4.5, format = null, plate = false, sound = true }) {
+    const el = document.createElement('div');
+    el.className = `f-stat${plate ? ' plate' : ''}`;
+    el.style.left = `${at[0]}px`; el.style.top = `${at[1]}px`;
+    el.innerHTML = `${kicker ? '<div class="k"></div>' : ''}<div class="v"></div>${label ? '<div class="l"></div>' : ''}<i></i>`;
+    if (kicker) el.querySelector('.k').textContent = kicker;
+    if (label) el.querySelector('.l').textContent = label;
+    const v = el.querySelector('.v');
+    v.style.fontSize = `${size}px`;
+    const fmt = format ?? ((n) => Math.round(n).toLocaleString('en-CA'));
+    v.textContent = fmt(from);
+    $('.f-stats').appendChild(el);
+    void el.offsetWidth;
+    el.classList.add('on');
+    if (sound) { f.sfx('riser', { dur }); f.sfx('hit', { at: F.t + dur }); }
+    f.spawn((function* () {
+      yield* f.tween(dur, (k) => { v.textContent = fmt(from + (value - from) * k); }, (k) => 1 - (1 - k) ** 4);
+      if (hold == null) return;
+      yield hold;
+      hideStat(el);
+    }()));
+    return el;
+  },
+  clearStats() { for (const el of root.querySelectorAll('.f-stat:not(.off)')) hideStat(el); },
+
+  /** Dim the frame around a control, with a glowing outline that glides from wherever it was. */
+  spot(target, { pad = 10, dur = 0.6 } = {}) {
+    const r = rect(target);
+    const goal = { x: r.left - pad, y: r.top - pad, w: r.width + pad * 2, h: r.height + pad * 2, o: 1 };
+    const from = F.spot.o > 0.05 ? { ...F.spot } : { ...goal, x: goal.x - 30, y: goal.y - 30, w: goal.w + 60, h: goal.h + 60, o: 0 };
+    spotTo(goal, from, dur);
+  },
+  spotOff(dur = 0.5) { spotTo({ ...F.spot, o: 0 }, { ...F.spot }, dur); },
+
+  /** Cinema bars in (true) or out. */
+  letterbox(on = true, dur = 1.2) { const b = F.bars; f.spawn(f.tween(dur, (k) => { F.bars = lerp(b, on ? 1 : 0, k); })); },
+
+  /**
+   * A fire front, shaped by noise, that burns the frame to black ('cover') or burns away from it
+   * ('reveal'), spreading from `origin` (0–1 of the frame), with a roar under it.
+   */
+  *burn(mode = 'reveal', { dur = 1.6, origin = [0.5, 0.5], sound = true } = {}) {
+    if (sound) f.sfx('burn', { dur, dir: mode === 'reveal' ? -1 : 1 });
+    yield* f.tween(dur, (k) => drawBurn(mode, k, origin), (k) => k);
+  },
+  /** The frame black at once, ready for a burn reveal (the cold open starts here). */
+  cover() { drawBurn('cover', 1, [0.5, 0.5]); },
+
+  /** Embers rising over the whole frame (above a burn cover), fading in or out. */
+  embers(on = true, dur = 1.5) {
+    const c = $('canvas.f-embers');
+    if (on && !c.dataset.live) { c.dataset.live = '1'; startEmbers(c, () => c.dataset.live === '1'); }
+    const o0 = Number(c.style.opacity || 0);
+    f.spawn((function* () {
+      yield* f.tween(dur, (k) => { c.style.opacity = String(lerp(o0, on ? 1 : 0, k)); });
+      if (!on) delete c.dataset.live;
+    }()));
   },
 
   // ---- titles
@@ -205,8 +332,88 @@ function ripple() {
   f.spawn((function* () { yield 0.8; r.remove(); }()));
 }
 
-/** Embers rising behind the end card: seeded, and stepped by the film clock. */
-function startEmbers(canvas) {
+/** Glide the spotlight; a newer glide replaces one in flight. */
+function spotTo(goal, from, dur) {
+  const job = (F.spotJob = (F.spotJob ?? 0) + 1);
+  f.spawn((function* () {
+    const t0 = F.t;
+    while (F.spotJob === job) {
+      const k = inOut(clamp((F.t - t0) / dur, 0, 1));
+      for (const key in goal) F.spot[key] = lerp(from[key], goal[key], k);
+      if (k >= 1) return;
+      yield 0;
+    }
+  }()));
+}
+
+function hideStat(el) {
+  el.classList.remove('on'); el.classList.add('off');
+  f.spawn((function* () { yield 0.8; el.remove(); }()));
+}
+
+// ------------------------------------------------------------------ burn transition
+// A low-resolution field (value noise plus distance from the origin) is thresholded each frame: behind the
+// front the frame is burnt through, a thin band at the front glows from white-hot to deep red, and ahead of
+// it is black. It is drawn small and scaled up, so the edges come out soft, then again blurred for the glow.
+const BW = 320, BH = 180, EDGE = 0.075;
+const burnCanvas = $('canvas.f-burn');
+const burnSmall = Object.assign(document.createElement('canvas'), { width: BW, height: BH });
+const burnPixels = burnSmall.getContext('2d').createImageData(BW, BH);
+const noiseField = (() => {
+  let s = 1959;
+  const rnd = () => ((s = (s * 16807) % 2147483647) / 2147483647);
+  const out = new Float32Array(BW * BH);
+  for (let oct = 0, cell = 80, amp = 1; oct < 4; oct++, cell /= 2, amp /= 2) {
+    const gw = Math.ceil(BW / cell) + 2;
+    const grid = Array.from({ length: gw * (Math.ceil(BH / cell) + 2) }, rnd);
+    for (let y = 0; y < BH; y++) for (let x = 0; x < BW; x++) {
+      const gx = x / cell, gy = y / cell, ix = Math.floor(gx), iy = Math.floor(gy);
+      const sx = (gx - ix) ** 2 * (3 - 2 * (gx - ix)), sy = (gy - iy) ** 2 * (3 - 2 * (gy - iy));
+      const g = (i, j) => grid[(iy + j) * gw + ix + i];
+      out[y * BW + x] += amp * lerp(lerp(g(0, 0), g(1, 0), sx), lerp(g(0, 1), g(1, 1), sx), sy);
+    }
+  }
+  let lo = Infinity, hi = -Infinity;
+  for (const v of out) { lo = Math.min(lo, v); hi = Math.max(hi, v); }
+  return out.map((v) => (v - lo) / (hi - lo));
+})();
+
+function drawBurn(mode, p, origin) {
+  const dpr = devicePixelRatio;
+  if (burnCanvas.width !== Math.round(W * dpr)) { burnCanvas.width = Math.round(W * dpr); burnCanvas.height = Math.round(H * dpr); }
+  const c = burnCanvas.getContext('2d');
+  c.setTransform(1, 0, 0, 1, 0, 0);
+  c.clearRect(0, 0, burnCanvas.width, burnCanvas.height);
+  if (mode === 'reveal' ? p >= 1 : p <= 0) return; // fully clear
+  const d = burnPixels.data;
+  const [ox, oy] = [origin[0] * BW, origin[1] * BH];
+  const far = Math.max(...[[0, 0], [BW, 0], [0, BH], [BW, BH]].map(([x, y]) => Math.hypot((x - ox) * 0.75, y - oy)));
+  const th = p * (1 + EDGE) - EDGE;
+  for (let i = 0; i < BW * BH; i++) {
+    const x = i % BW, y = (i / BW) | 0;
+    const v = 0.55 * noiseField[i] + 0.45 * (Math.hypot((x - ox) * 0.75, y - oy) / far);
+    // k: 0 on the burnt side of the front, 1 on the black side
+    let k = mode === 'reveal' ? (v - th) / EDGE : (th + EDGE - v) / EDGE;
+    const j = i * 4;
+    if (k <= 0) { d[j + 3] = 0; continue; }
+    if (k >= 1) { d[j] = d[j + 1] = d[j + 2] = 0; d[j + 3] = 255; continue; }
+    k = Math.sqrt(k);
+    d[j] = 255 * (1 - k * 0.55); d[j + 1] = 235 * (1 - k) ** 1.4; d[j + 2] = 160 * (1 - k) ** 3;
+    d[j + 3] = 255 * Math.min(1, 0.35 + k * 1.2);
+  }
+  burnSmall.getContext('2d').putImageData(burnPixels, 0, 0);
+  c.imageSmoothingEnabled = true; c.imageSmoothingQuality = 'high';
+  c.drawImage(burnSmall, 0, 0, burnCanvas.width, burnCanvas.height);
+  // The glow: the same picture blurred and added (black adds nothing, so only the front brightens)
+  c.globalCompositeOperation = 'lighter';
+  c.filter = `blur(${10 * dpr}px)`;
+  c.globalAlpha = 0.9;
+  c.drawImage(burnSmall, 0, 0, burnCanvas.width, burnCanvas.height);
+  c.filter = 'none'; c.globalAlpha = 1; c.globalCompositeOperation = 'source-over';
+}
+
+/** Embers rising (behind the end card, or over the cold open): seeded, and stepped by the film clock. */
+function startEmbers(canvas, alive = () => true) {
   const dpr = devicePixelRatio;
   canvas.width = W * dpr; canvas.height = H * dpr;
   const c = canvas.getContext('2d');
@@ -215,7 +422,7 @@ function startEmbers(canvas) {
   const parts = Array.from({ length: 140 }, () => ({ x: rnd() * W, y: rnd() * H, r: 0.6 + rnd() * 2.2, v: 14 + rnd() * 40, ph: rnd() * 6 }));
   f.spawn((function* () {
     let last = F.t;
-    for (;;) {
+    while (alive()) {
       const dt = F.t - last; last = F.t;
       c.setTransform(dpr, 0, 0, dpr, 0, 0);
       c.clearRect(0, 0, W, H);
@@ -230,6 +437,8 @@ function startEmbers(canvas) {
       }
       yield 0;
     }
+    c.setTransform(1, 0, 0, 1, 0, 0);
+    c.clearRect(0, 0, canvas.width, canvas.height);
   }()));
 }
 
@@ -275,6 +484,11 @@ function cropRect() {
 function draw() {
   const c = cropRect();
   hud.style.transform = `translate(${c.x}px, ${c.y}px) scale(${c.width / W})`;
+  const sp = F.spot;
+  spotEl.style.opacity = String(sp.o);
+  spotEl.style.transform = `translate(${sp.x}px, ${sp.y}px)`;
+  spotEl.style.width = `${sp.w}px`; spotEl.style.height = `${sp.h}px`;
+  for (const b of bars) b.style.height = `${F.bars * BAR}px`;
   const { x, y, shown, down } = F.cursor;
   cursorEl.style.opacity = shown ? '1' : '0';
   cursorEl.style.transform = `translate(${x}px, ${y}px)`;
@@ -289,9 +503,11 @@ window.Film = {
     const s = E.state;
     return !document.querySelector('#enter').disabled && s.story && s.spreadList && s.live && document.fonts.status === 'loaded';
   },
-  /** The narration, as { id, text, sentences }, built from the loaded record. */
-  script(opts = {}) {
-    scenes = buildScenes(f, opts);
+  /** The narration, as { id, text, sentences }, built from the loaded record (async: it reads /api/provenance). */
+  async script(opts = {}) {
+    // The ring summary is counted the way the Sources view counts its header, from the server's provenance
+    const provenance = await fetch('/api/provenance').then((r) => (r.ok ? r.json() : null)).catch(() => null);
+    scenes = buildScenes(f, { ...opts, provenance });
     F.lines = scenes.flatMap((s) => Object.entries(s.lines).map(([k, text]) => ({ id: `${s.id}.${k}`, text, sentences: splitSentences(text) })));
     return F.lines;
   },
@@ -301,7 +517,7 @@ window.Film = {
     F.tasks = [{ gen: master(), wake: 0 }];
     draw();
   },
-  /** Advance one frame. Returns the mouse, its events, the crop to capture, and whether the film is over. */
+  /** Advance one frame. Returns the mouse, its and the keyboard's events, the crop to capture, and whether the film is over. */
   step(ms) {
     for (const task of F.tasks) if (task.until?.()) { task.until = null; task.wake = F.t; }
     if (F.tasks.some((task) => task.until)) { clock.redraw(); return { wait: true, scene: F.scene?.id }; }

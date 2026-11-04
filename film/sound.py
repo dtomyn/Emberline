@@ -4,8 +4,10 @@
 
 Layers, quietest first: a low pad in D minor that swells and ducks under the voice; the crackle and roar
 of a fire under the burning scenes; an air whoosh on each camera zoom; a soft two-part mouse click
-(press and release, panned to where the cursor is); thunder on every lightning strike the replay drew;
-a sub impact under the title and end card; and the Kokoro narration on top. render.py levels the
+(press and release, panned to where the cursor is); a key tap for every typed character; a riser under
+each counting number and a soft bell hit when it lands; a roar under each burn transition; thunder on
+every lightning strike the replay drew; a sub impact under the title and end card; and the Kokoro
+narration on top. render.py levels the
 result to -14 LUFS for YouTube.
 """
 import numpy
@@ -64,8 +66,13 @@ def duck_curve(voiced, total, depth, attack=0.25, release=0.9):
     on = numpy.zeros(n, dtype="float32")
     for v in voiced:
         on[seconds(v["at"] - attack):seconds(v["end"] + 0.15)] = 1
-    k = numpy.ones(seconds(release)) / seconds(release)  # moving average makes the edges soft
-    on = numpy.convolve(on, k, mode="same")
+    # A centred moving average makes the edges soft. Done with a running sum: numpy.convolve is direct
+    # convolution, and a 0.9 s kernel over minutes of 48 kHz audio would take hours.
+    w = seconds(release)
+    c = numpy.concatenate([[0.0], numpy.cumsum(on, dtype="float64")])
+    lo = numpy.clip(numpy.arange(n) - w // 2, 0, n)
+    hi = numpy.clip(lo + w, 0, n)
+    on = ((c[hi] - c[lo]) / w).astype("float32")
     return 1 - (1 - depth) * numpy.clip(on, 0, 1)
 
 
@@ -135,6 +142,61 @@ def click(down):
     return (tick * 0.7 + ring + thock) * (1.0 if down else 0.6)
 
 
+def key(seed, space=False):
+    """A keyboard tap: a short bright tick over a small low knock; the space bar is duller and longer."""
+    r = numpy.random.default_rng(seed)
+    n = seconds(0.06)
+    t = numpy.arange(n) / SR
+    tick = band(r.standard_normal(n), 1800, 8000) * numpy.exp(-t / (0.0022 if space else 0.0014))
+    knock = numpy.sin(2 * numpy.pi * (r.uniform(300, 380) if not space else 210) * t) * numpy.exp(-t / (0.016 if space else 0.009))
+    ring = numpy.sin(2 * numpy.pi * r.uniform(1700, 2400) * t) * numpy.exp(-t / 0.004) * 0.25
+    out = tick * 0.8 + knock * (0.55 if space else 0.4) + ring
+    return out / numpy.abs(out).max()
+
+
+def riser(dur):
+    """Tension under a counting number: filtered noise and a sine that both climb, swelling to the end."""
+    n = seconds(dur)
+    t = numpy.arange(n) / SR
+    k = t / max(dur, 1e-3)
+    freq = 180 * 4 ** k
+    tone = numpy.sin(2 * numpy.pi * numpy.cumsum(freq) / SR) * 0.35 + numpy.sin(2 * numpy.pi * numpy.cumsum(freq * 1.5) / SR) * 0.15
+    air = band(rng.standard_normal(n), 600, 7000) * (0.3 + 0.7 * k)
+    env = k ** 1.8 * numpy.minimum(1, (1 - k) * 40 + 0.0)
+    out = (tone + air / max(1e-9, numpy.abs(air).max())) * env
+    return out / max(1e-9, numpy.abs(out).max())
+
+
+def hit():
+    """A number landing: a short soft sub thump and a warm bell (fifth and octave) that rings out."""
+    n = seconds(2.6)
+    t = numpy.arange(n) / SR
+    sub = numpy.sin(2 * numpy.pi * numpy.cumsum(55 + 40 * numpy.exp(-t / 0.08)) / SR) * numpy.exp(-t / 0.35)
+    bell = sum(a * numpy.sin(2 * numpy.pi * f * t) * numpy.exp(-t / d) for f, a, d in ((587.3, 0.5, 0.9), (880, 0.3, 0.7), (1174.7, 0.2, 0.5), (1760, 0.08, 0.3)))
+    thump = band(rng.standard_normal(n), 30, 300) * numpy.exp(-t / 0.03)
+    out = sub * 0.9 + bell * 0.45 + 0.4 * thump / numpy.abs(thump).max()
+    return out / numpy.abs(out).max()
+
+
+def burn(dur, cover):
+    """A burn transition: a roar that swells through the move, crackling, with a soft air rush on top."""
+    n = seconds(dur + 1.2)
+    t = numpy.arange(n) / SR
+    k = numpy.clip(t / dur, 0, 1)
+    swell = numpy.sin(numpy.pi * numpy.clip(k * 0.9 + 0.05, 0, 1)) ** 1.2 * numpy.exp(-numpy.maximum(0, t - dur) / 0.5)
+    roar = band(rng.standard_normal(n), 35, 500)
+    rush = band(rng.standard_normal(n), 800, 5000) * (k if cover else 1 - k)
+    crack = numpy.zeros(n)
+    at = 0.0
+    while at < dur:
+        at += rng.exponential(1 / 30)
+        i, length = seconds(at), seconds(rng.uniform(0.002, 0.01))
+        if i + length < n:
+            crack[i:i + length] += numpy.diff(rng.standard_normal(length + 1)) * rng.uniform(0.2, 1) ** 2
+    out = roar / numpy.abs(roar).max() + 0.35 * rush / numpy.abs(rush).max() + 0.6 * crack / max(1e-9, numpy.abs(crack).max())
+    return out * swell / max(1e-9, numpy.abs(out * swell).max())
+
+
 def whoosh(dur, rising, big=False):
     """Air moving past: noise that swells and fades, its colour sliding up for a push-in and down for a pull-out."""
     n = seconds(dur + 0.3)
@@ -201,6 +263,7 @@ def mix(timeline, voice_dir, clips, out_wav, fps):
     fx = numpy.zeros((n, 2), dtype="float32")
     clicks = {True: click(True), False: click(False)}
     booms = boom()
+    hits = hit()
     thunders = [thunder(s) for s in range(4)]
     last_thunder = -9.0
     for e in sfx:
@@ -210,6 +273,14 @@ def mix(timeline, voice_dir, clips, out_wav, fps):
             add(fx, whoosh(e["dur"], e["dir"] > 0, e.get("big", False)), e["at"], 0.16 if e.get("big") else 0.09, 0.5)
         elif e["kind"] == "boom":
             add(fx, booms, e["at"], 0.75, 0.5)
+        elif e["kind"] == "key":
+            add(fx, key(int(e["at"] * 1000), e.get("space", False)), e["at"], 0.2, 0.25 + 0.5 * e.get("x", 0.5))
+        elif e["kind"] == "riser":
+            add(fx, riser(e["dur"]), e["at"], 0.07, 0.5)
+        elif e["kind"] == "hit":
+            add(fx, hits, e["at"], 0.32, 0.5)
+        elif e["kind"] == "burn":
+            add(fx, burn(e["dur"], e.get("dir", 1) > 0), e["at"], 0.26, 0.5)
         elif e["kind"] == "thunder" and e["at"] - last_thunder > 0.45:
             last_thunder = e["at"]
             add(fx, thunders[int(e["at"] * 7) % 4], e["at"] + 0.15, 0.18 + 0.3 * e.get("intensity", 0.6), 0.5)

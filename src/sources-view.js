@@ -622,5 +622,22 @@ export function createSourcesView(app) {
   });
   addEventListener('resize', () => { if (S.open && S.info) layout(); });
 
-  return { open, close, get isOpen() { return S.open; } };
+  /** Where a year's fire scar, or a source's bore or label, is on screen (client px). For film/director.js. */
+  function locate({ year, source } = {}) {
+    if (!S.geo) return null;
+    const r0 = canvas.getBoundingClientRect();
+    const at = ([x, y]) => [r0.left + x, r0.top + y];
+    if (year != null) {
+      const scar = S.scars.find((s) => s.year === year);
+      const a = scar ? scar.angle : 0;
+      return at(pt((yearR(year - 1) + yearR(year)) / 2, a));
+    }
+    const slot = S.slots.find((s) => s.src.id === source);
+    if (!slot) return null;
+    const span = slot.src.group === 'record' && sourceYears(slot.src, S.info);
+    const r = span ? (yearR(span[0]) + yearR(span[1])) / 2 : slot.src.group === 'live' ? (S.geo.heart + S.geo.bark) / 2 : S.geo.halo;
+    return at(pt(r, slot.mid));
+  }
+
+  return { open, close, locate, get isOpen() { return S.open; } };
 }

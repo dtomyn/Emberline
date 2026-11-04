@@ -4,15 +4,22 @@
 // narration and the voice is remade for the lines that changed. Each scene has a title and what it
 // shows (for the storyboard and YouTube chapters), its spoken `lines`, and `run`, a generator that
 // drives the real interface through the toolkit `f` from film/director.js.
-import { summarize, byYear, fmtHa, fmtInt, seasonT, SEASON_START_DOY, displayName } from '/src/data.js';
+import { summarize, byYear, fmtHa, fmtInt, displayName } from '/src/data.js';
 import { sayHa, sayCount, sayDate } from '/src/narration.js';
+import { search, parseText, emptyQuery, mergeQuery } from '/src/search.js';
+import { SOURCES } from '/src/provenance.js';
 
-const SASKATOON_HA = 22_800; // as in main.js
+const SASKATOON_HA = 22_800;      // as in main.js
+const PROVINCE_HA = 65_103_600;   // Saskatchewan's total area, 651,036 km² (Statistics Canada)
+const QUERY = 'lightning over 10,000 ha';
+const QUERY_SAID = 'lightning over ten thousand hectares';
 const pct = (a, b) => Math.round((a / (b || 1)) * 100);
+const pct1 = (a, b) => { const p = (a / (b || 1)) * 100; return p < 10 ? p.toFixed(1).replace(/\.0$/, '') : String(Math.round(p)); };
 const named = (f) => { const n = displayName(f); return n && n !== f.fire_id ? n : null; };
 
-export function buildScenes(f, { url = '' } = {}) {
-  const { state, app, spread, map } = f.E;
+export function buildScenes(f, { url = '', provenance = null } = {}) {
+  const { state, app, spread, map, sources } = f.E;
+  const { W, H } = f;
   // ---- figures, the same way src/story.js finds them
   const years = [...new Set(state.all.map((x) => x.year))].sort((a, b) => a - b);
   const firstFull = byYear(state.all, years).find((y) => y.count >= 100)?.year ?? years[0];
@@ -39,6 +46,18 @@ export function buildScenes(f, { url = '' } = {}) {
   const saskatoons = largest.size_ha / SASKATOON_HA;
   const live = state.live;
   const liveCount = live.incidents.filter((i) => i.status !== 'Out').length;
+  const provincePct = pct(all.ha, PROVINCE_HA);
+
+  // The search, run with the same module the Search tab uses, over the same fires
+  const parsed = parseText(QUERY, { communities: live.communities ?? [] });
+  const found = search(state.all, mergeQuery(emptyQuery(), { ...parsed.patch, text: parsed.text }));
+  const allHa = state.all.reduce((s, x) => s + x.size_ha, 0);
+  const foundShare = (found.ha / allHa) * 100;
+
+  // The ring summary, counted as src/sources-view.js counts its header
+  const records = provenance
+    ? provenance.sources.filter((s) => s.source !== 'mock').reduce((sum, s) => sum + s.fires, 0) + (provenance.spread?.fires ?? 0) + (provenance.spread?.hotspots ?? 0)
+    : null;
 
   const trackX = (t) => {
     const r = document.querySelector('#track').getBoundingClientRect();
@@ -53,34 +72,50 @@ export function buildScenes(f, { url = '' } = {}) {
     const k = (v - Number(el.min)) / (Number(el.max) - Number(el.min));
     return [r.left + 8 + k * (r.width - 16), r.top + r.height / 2];
   };
+  const ringAt = (where) => () => sources.locate(where) ?? [W * 0.36, H * 0.55];
 
   const scenes = [
     {
-      id: 'open', title: 'Every fire on record', shows: 'The intro: embers rising behind the Emberline title.',
-      lines: { a: `Since ${firstFull}, Saskatchewan has recorded ${sayCount(all.count)} wildfires. This is every one of them.` },
+      id: 'open', title: 'Every fire on record', shows: 'Cold open: in darkness, the record counts up; then a fire front burns through to the app.',
+      lines: {
+        a: `Since ${firstFull}, Saskatchewan has recorded ${sayCount(all.count)} wildfires.`,
+        b: `Together they burned ${sayHa(all.ha)} hectares, equal to ${provincePct} percent of the province.`,
+        c: 'This is every one of them.',
+      },
       *run(f) {
-        f.music(0.55, 4);
-        document.querySelector('#film .f-black').style.opacity = '1';
-        f.spawn(f.fade(0, 2.2));
-        f.spawn(f.zoom([f.W / 2, f.H * 0.44], { z: 1.14, dur: 9, whoosh: false }));
-        yield 0.8;
-        f.sfx('boom');
+        f.cover();
+        f.embers(true, 3);
+        f.music(0.55, 5);
+        yield 1.2;
         f.say('a');
-        yield* f.voice(0.6);
+        yield* f.word('recorded');
+        f.stat({ value: all.count, kicker: `Saskatchewan · ${firstFull}–${lastYear}`, label: 'wildfires on record', at: [W / 2, H * 0.36], size: 150, dur: 2.4, hold: null });
+        yield* f.voice(0.5);
+        f.say('b');
+        yield* f.word('burned');
+        f.stat({ value: all.ha, label: 'hectares burned', at: [W / 2, H * 0.7], size: 96, dur: 2.6, hold: null });
+        yield* f.voice(0.7);
+        f.clearStats();
+        f.say('c');
+        yield 0.9;
+        f.sfx('boom');
+        f.embers(false, 2.5);
+        f.spawn(f.zoom([W / 2, H * 0.44], { z: 1.12, dur: 9, whoosh: false }));
+        yield* f.burn('reveal', { dur: 2.6, origin: [0.5, 0.42] });
       },
     },
     {
       id: 'enter', title: 'Into the atlas', shows: 'Enter the atlas: the camera dives onto the province.',
       lines: { a: 'Emberline is an atlas of that record. Every fire, every season, rebuilt from public data and replayed as it happened.' },
       *run(f) {
-        f.zoomOut({ dur: 1.6 });
-        f.place([f.W * 0.78, f.H * 0.9]);
+        f.place([W * 0.78, H * 0.9]);
         f.say('a');
-        yield 0.3;
+        yield 1.6;
+        f.zoomOut({ dur: 1.4 });
         yield* f.clickOn('#enter', { dur: 1.4 });
         f.sfx('whoosh', { dur: 3.4, dir: 1, big: true });
         f.music(0.7, 3);
-        yield* f.move([f.W * 0.6, f.H * 0.62], { dur: 1.2 });
+        yield* f.move([W * 0.6, H * 0.62], { dur: 1.2 });
         yield* f.voice(0.4);
         yield* f.waitFor(() => !map.isMoving(), 4);
       },
@@ -111,6 +146,8 @@ export function buildScenes(f, { url = '' } = {}) {
         yield* f.word('fires');
         yield* f.clickOn('#speed [data-speed="21"]', { dur: 1.3 });
         f.zoomOut({ dur: 1.4 });
+        yield* f.word('times');
+        f.stat({ value: times, label: `an average season, in ${top.year}`, at: [W * 0.47, H * 0.42], size: 130, dur: 1.6, hold: 3, plate: true, format: (n) => `${n.toFixed(1)}×` });
         yield* f.voice(0.3);
         yield* f.waitFor(() => state.t >= largest.t + 12, 20);
         if (state.playing) yield* f.clickOn('#play', { dur: 1 });
@@ -125,10 +162,14 @@ export function buildScenes(f, { url = '' } = {}) {
       *run(f) {
         yield* f.clickOn('#largest button', { dur: 1.2 });
         f.say('a');
-        yield 0.4;
+        yield 0.5;
+        f.spot('#card', { pad: 8, dur: 0.8 });
         f.zoomTo('#card', { z: 1.55, dur: 1.4 });
         yield* f.move('#card .compare', { dur: 1.2 });
+        yield* f.word('times');
+        f.spot('#card .compare', { pad: 8, dur: 0.6 });
         yield* f.voice(0.5);
+        f.spotOff();
       },
     },
     {
@@ -150,8 +191,10 @@ export function buildScenes(f, { url = '' } = {}) {
         yield* f.waitFor(() => spread.state.playing, 5);
         yield 0.6;
         yield* f.click();
-        yield* f.move([f.W * 0.62, f.H * 0.6], { dur: 1.4 });
+        f.letterbox(true);
+        yield* f.move([W * 0.62, H * 0.6], { dur: 1.4 });
         yield* f.voice(0.3);
+        f.letterbox(false, 0.9);
         f.zoomTo('#spread-chart', { z: 1.45, dur: 1.4 });
         f.say('b');
         yield* f.voice(0.4);
@@ -186,39 +229,91 @@ export function buildScenes(f, { url = '' } = {}) {
           yield* f.click();
           yield* f.waitFor(() => !map.isMoving(), 4);
           yield* f.clickOn('#play', { dur: 0.8 });
+          f.letterbox(true);
           f.fire(0.6);
-          yield* f.move([f.W * 0.6, f.H * 0.35], { dur: 1.6 });
+          yield* f.move([W * 0.6, H * 0.35], { dur: 1.6 });
           yield* f.waitFor(() => state.t >= storm.t1 + 3, 12);
         }
         yield* f.voice(0.5);
-        if (state.playing) yield* f.clickOn('#play', { dur: 0.8 });
+        if (state.playing) { f.letterbox(false, 0.8); yield* f.clickOn('#play', { dur: 0.8 }); }
         f.fire(0.2);
+        // Burn through to the whole province for the search
+        yield* f.burn('cover', { dur: 1.1, origin: [0.6, 0.35] });
+        f.letterbox(false, 0.1);
+        map.jumpTo({ center: [-105.6, 54.6], zoom: 4.75, pitch: 0, bearing: 0 });
+        f.place([W * 0.5, H * 0.55]);
+        yield 0.3;
       },
     },
     {
-      id: 'explore', title: `${yearly.length} seasons in 3D`, shows: 'Explore: the whole record as a heat map, then 3D hexagon columns that rise and orbit.',
+      id: 'search', title: 'Search in plain words', shows: `Search: "${QUERY}" typed in plain language becomes filters, and the results ignite in date order.`,
       lines: {
-        a: `Explore folds ${yearly.length} seasons into one map. As heat, or as columns, one for every twelve kilometres, their height the area burned.`,
-        b: `The largest one percent of fires, just ${fmtInt(onePct.length)} of them, burned ${pct(onePctHa, all.ha)} percent of it all.`,
+        a: `Search understands plain language. Type ${QUERY_SAID}, and the words become filters.`,
+        b: `${sayCount(found.count)} fires. Just ${pct1(found.count, state.all.length)} percent of the record, yet they burned ${pct1(found.ha, allHa)} percent of everything that burned.`,
+        c: 'Every result is on the map, the same query runs on the server, and it all exports to CSV or GeoJSON.',
       },
       *run(f) {
-        app.set({ viz: 'heat' }); // the tab opens on the heat map; the columns come next
-        yield* f.clickOn('[data-mode="explore"]', { dur: 1.2 });
-        app.fly({ center: [-105.6, 54.9], zoom: 4.9, pitch: 0, bearing: 0 });
-        f.chip('04', 'Explore', 'The whole record at once');
+        f.spawn(f.burn('reveal', { dur: 1.3, origin: [0.15, 0.2] }));
+        yield 0.5;
+        yield* f.clickOn('[data-mode="search"]', { dur: 1.1 });
+        f.chip('04', 'Search', 'Ask the record in plain words');
+        yield 0.4;
         f.say('a');
-        yield* f.move('#explore-viz [data-viz="heat"]', { dur: 1 });
-        yield* f.word('columns');
-        yield* f.clickOn('#explore-viz [data-viz="hex"]', { dur: 0.6 });
-        f.sfx('whoosh', { dur: 1.5, dir: 1 });
-        yield 1.6;
-        const big = sorted[0];
-        yield* f.move({ lngLat: big.position }, { dur: 1.4 });
+        f.spot('.sx-box', { pad: 6, dur: 0.8 });
+        f.zoomTo('.sx-box', { z: 1.9, dur: 1.3, ax: 0.9 });
+        yield* f.clickOn('#sx-input', { dur: 1.0, ax: 0.3 });
+        yield 0.2;
+        yield* f.type(QUERY, { cps: 12 });
+        yield 0.5;
+        f.spot('#sx-chips', { pad: 8, dur: 0.6 });
         yield* f.voice(0.2);
+        // The results: count, hectares and share, then the list
+        f.spotOff(0.4);
+        f.zoomTo('.sx-results .kpis', { z: 1.6, dur: 1.4 });
         f.say('b');
+        yield* f.move('#sx-k-count', { dur: 1.3 });
+        yield* f.word('burned');
+        f.spot('#sx-share', { pad: 10, dur: 0.6 });
+        f.stat({ value: foundShare, label: 'of all area burned', kicker: `${fmtInt(found.count)} fires`, at: [W * 0.4, H * 0.5], size: 140, dur: 1.6, hold: 3.4, plate: true, format: (n) => `${n.toFixed(1)}%` });
+        yield* f.voice(0.3);
+        f.spotOff(0.4);
+        f.zoomOut({ dur: 1.3 });
+        f.say('c');
+        yield* f.move('#sx-list .sx-row', { dur: 1.2, ax: 0.35 }); // hovering a row lights its fire on the map
+        yield 1.2;
+        yield* f.word('exports');
+        f.spot('.sx-export', { pad: 8, dur: 0.6 });
+        f.zoomTo('.sx-actions', { z: 1.6, dur: 1.2 });
+        yield* f.voice(0.3);
+        f.spotOff(0.4);
+      },
+    },
+    {
+      id: 'explore', title: 'The whole record in 3D', shows: 'Explore: the search becomes 3D hexagon columns; then every fire rises, and the camera orbits.',
+      lines: {
+        a: 'One click turns that search into three dimensions. A column for every twelve kilometres, its height the area burned.',
+        b: `Show every fire, and every season rises together. The largest one percent of fires, just ${fmtInt(onePct.length)} of them, burned ${pct(onePctHa, all.ha)} percent of it all.`,
+      },
+      *run(f) {
+        app.set({ viz: 'hex' });
+        f.zoomOut({ dur: 0.8 });
+        yield* f.clickOn('#sx-explore', { dur: 1.0 });
+        yield 0.4; // let the mode switch settle its own camera, then tilt up for the columns
+        app.fly({ center: [-105.4, 54.2], zoom: 5.0, pitch: 52, bearing: -18 });
+        f.sfx('whoosh', { dur: 3, dir: 1, big: true });
+        f.chip('05', 'Explore', 'The whole record at once');
+        f.say('a');
+        yield* f.move([W * 0.55, H * 0.5], { dur: 1.6 });
+        yield* f.voice(0.3);
+        f.say('b');
+        yield* f.clickOn('#sx-applied-clear', { dur: 1.2 });
+        f.sfx('whoosh', { dur: 1.5, dir: 1 });
+        yield 1.2;
         yield* f.clickOn('#orbit', { dur: 1.2 });
-        f.zoomTo([f.W * 0.5, f.H * 0.5], { z: 1.22, dur: 2.5 });
-        yield* f.move([f.W * 0.7, f.H * 0.82], { dur: 1.4 });
+        f.zoomTo([W * 0.5, H * 0.5], { z: 1.2, dur: 2.5 });
+        yield* f.move([W * 0.7, H * 0.82], { dur: 1.4 });
+        yield* f.word('percent');
+        f.stat({ value: pct(onePctHa, all.ha), label: `of all area burned by the largest 1% of fires`, at: [W * 0.34, H * 0.8], size: 110, dur: 1.6, hold: 3.6, plate: true, format: (n) => `${Math.round(n)}%` });
         yield* f.voice(1.5);
         f.zoomOut({ dur: 1.4 });
       },
@@ -233,36 +328,80 @@ export function buildScenes(f, { url = '' } = {}) {
       },
       *run(f) {
         yield* f.clickOn('[data-mode="live"]', { dur: 1.3 });
+        app.set({ orbit: false });
         app.fly({ center: [-105.6, 55.0], zoom: 5.0, pitch: 30, bearing: 0 });
-        f.chip('05', 'Live', 'SPSA services and national feeds, now');
+        f.chip('06', 'Live', 'SPSA services and national feeds, now');
         f.say('a');
         yield* f.waitFor(() => !map.isMoving(), 4);
         f.zoomTo('#alert-radius', { z: 1.35, dur: 1.3, ax: 0.9 });
         yield* f.drag(() => sliderX('#alert-radius', Number(document.querySelector('#alert-radius').value)), () => sliderX('#alert-radius', 130), { dur: 2.2 });
         f.zoomOut({ dur: 1.4 });
-        yield* f.move([f.W * 0.55, f.H * 0.5], { dur: 1.4 });
+        yield* f.move([W * 0.55, H * 0.5], { dur: 1.4 });
         yield* f.voice(0.2);
-        if (live.simulated) f.zoomTo('#live-source', { z: 1.5, dur: 1.2 });
+        if (live.simulated) { f.zoomTo('#live-source', { z: 1.5, dur: 1.2 }); f.spot('#live-source', { pad: 8 }); }
         f.say('b');
         yield* f.voice(0.8);
+        f.spotOff();
         f.zoomOut({ dur: 1.2 });
       },
     },
     {
-      id: 'sources', title: 'Read the rings', shows: 'Every source behind the app as a fire-scarred tree cross-section.',
+      id: 'sources', title: 'Read the rings', shows: 'Every source behind the app as a fire-scarred tree cross-section, with a live check of SPSA\'s own server.',
       lines: {
-        a: 'And every number traces back to where it came from. Read the rings: each ring is a year of the record, the scars are its great fire seasons, and every source is one click away, with its exact request and licence.',
+        a: 'And every number you have just seen traces back to where it came from.',
+        b: "Read the rings. Like a tree's cross-section, each ring is a year of the record, and the scars are its worst fire seasons. Each source bores through the years it covers.",
+        c: "Pick one, and it names the owner, the licence and the exact request. It can even ask the source, live. Here, the Public Safety Agency's own server.",
+        d: records
+          ? `${SOURCES.length} sources. ${records >= 1e6 ? `Over ${Math.floor(records / 1e5) / 10} million` : `Over ${fmtInt(records)}`} real records. And not one data file in the repository. Every dataset rebuilds from its source with one command.`
+          : `${SOURCES.length} sources, and not one data file in the repository. Every dataset rebuilds from its source with one command.`,
       },
       *run(f) {
         yield* f.clickOn('#sources-btn', { dur: 1.3 });
+        f.sfx('whoosh', { dur: 2.4, dir: 1, big: true });
         f.say('a');
-        yield* f.until(() => document.querySelector('#src-list button[data-id="nbac"]'));
-        yield* f.move([f.W * 0.36, f.H * 0.5], { dur: 1.6 });
+        yield* f.until(() => document.querySelector('#src-list button[data-id="spsa-communities"]') && sources.locate({ source: 'cnfdb' }));
+        f.fire(0.35, 2);
+        // Push in on the trunk while the front burns out from the pith
+        f.zoomTo(ringAt({ year: top.year }), { z: 1.3, dur: 3.2, whoosh: false });
+        yield* f.move([W * 0.33, H * 0.62], { dur: 1.6 });
+        yield* f.voice(0.2);
+        f.say('b');
+        yield* f.word('ring');
+        yield* f.move(ringAt({ year: lastYear - 12 }), { dur: 1.2 });
         yield* f.word('scars');
-        yield* f.clickOn('#src-list button[data-id="nbac"]', { dur: 1.2 });
-        f.zoomTo('#src-card', { z: 1.45, dur: 1.4 });
+        yield* f.move(ringAt({ year: top.year }), { dur: 1.1 }); // the tooltip names the season
+        yield* f.word('bores');
+        yield* f.move(ringAt({ source: 'cnfdb' }), { dur: 1.3 });
+        yield* f.voice(0.3);
+        f.zoomOut({ dur: 1.3 });
+        f.say('c');
+        f.spot('#src-list', { pad: 8, dur: 0.7 });
+        yield* f.clickOn('#src-list button[data-id="spsa-communities"]', { dur: 1.3 });
+        // The card runs below the fold: scroll the panel until its live reply line is on screen
+        yield* f.move([W * 0.87, H * 0.72], { dur: 0.6 });
+        yield* f.scroll('#sources .src-panel', { into: '#src-card .src-ping-out', dur: 1.0 });
+        f.spot('#src-card', { pad: 6, dur: 0.7 });
+        f.zoomTo('#src-card', { z: 1.55, dur: 1.4 });
+        yield* f.word('ask');
+        yield* f.clickOn('#src-card .src-ping', { dur: 1.1 });
+        // The reply arrives in real time; the film waits for it
+        yield* f.until(() => { const t = document.querySelector('#src-card .src-ping-out')?.textContent ?? ''; return t && t !== 'Asking…'; });
+        yield 0.2;
+        f.spot('#src-card .src-ping-out', { pad: 10, dur: 0.6 });
+        f.sfx('hit');
         yield* f.voice(1.2);
-        f.zoomOut({ dur: 1.2 });
+        f.spotOff();
+        f.zoomOut({ dur: 1.4 });
+        f.fire(0.2, 2);
+        f.say('d');
+        yield 0.6;
+        f.spot('#rings-sum', { pad: 10, dur: 0.8 });
+        f.zoomTo('#rings-sum', { z: 1.6, dur: 1.6, ax: 0.35 });
+        yield* f.move([W * 0.36, H * 0.72], { dur: 1.6 });
+        yield* f.voice(0.8);
+        f.spotOff(0.8);
+        f.zoomOut({ dur: 1.6 });
+        yield 1.0;
       },
     },
     {
@@ -270,14 +409,18 @@ export function buildScenes(f, { url = '' } = {}) {
       lines: { a: 'Emberline. Every fire, from the record.' },
       *run(f) {
         f.showCursor(false);
+        f.fire(0, 2);
+        yield* f.burn('cover', { dur: 1.4, origin: [0.36, 0.55] });
         f.endCard({
           line: `${fmtInt(all.count)} fires · ${fmtHa(all.ha)} ha · ${firstFull}–${lastYear}`,
           sources: 'CNFDB · NBAC · CWFIS · SPSA GIS · ECCC GeoMet',
           url,
         });
         f.music(0.45, 2);
-        yield 1.2;
+        yield 1.3; // the card fades in under the cover
         f.sfx('boom');
+        f.spawn(f.burn('reveal', { dur: 2, origin: [0.5, 0.45], sound: false }));
+        yield 0.8;
         f.say('a');
         yield* f.voice(3);
         f.music(0, 3);
@@ -289,6 +432,7 @@ export function buildScenes(f, { url = '' } = {}) {
   scenes.facts = {
     fires: all.count, hectares: Math.round(all.ha), firstYear: firstFull, lastYear, seasons: yearly.length,
     topYear: top.year, topHa: Math.round(top.ha), largest: displayName(largest), spread: sp?.id ?? null, liveSimulated: !!live.simulated,
+    search: { query: QUERY, count: found.count, share: Number(foundShare.toFixed(1)) }, sources: SOURCES.length, records,
   };
   return scenes;
 }

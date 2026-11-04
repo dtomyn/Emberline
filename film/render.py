@@ -1,13 +1,15 @@
 """Render the Emberline explainer from the live app, one exact frame at a time.
 
-The scenes and narration are in film/scenes.js (see film/storyboard.md); every number comes from the loaded
-record, so re-run this after a data refresh. Uses the IRISIdeas Python environment (playwright, imageio-ffmpeg,
+The scenes and narration are in film/scenes.js (see film/storyboard.md); film/director.js stages them (cursor,
+typing, camera, motion graphics) and film/sound.py scores them. Every number comes from the loaded record,
+so re-run this after a data refresh. Uses the IRISIdeas Python environment (playwright, imageio-ffmpeg,
 kokoro-onnx, soundfile, numpy) and the installed Microsoft Edge. Run it through `npm run film`.
 
   render.py                     The 1080p film, captions, script, YouTube text and storyboard. Roughly an hour.
   render.py --preview           A quick 720p, 15 fps cut to check timing and sound.
   render.py --stills 5,40,90    Save frames at these seconds as JPEGs, no video.
   render.py --until 30          Stop after 30 seconds of film (with --preview, for quick checks).
+  render.py --remix [--preview] Remake only the soundtrack and the final file from the last render's picture.
 
 Options: --scale sets the capture's pixel ratio (the layout is always 1600x900; 1.5 captures 2400x1350, which
 keeps the zoom-ins sharp at 1080p). --url puts an address on the end card and in the YouTube text.
@@ -125,7 +127,13 @@ def film_frames(page, fps, on_frame):
             page.mouse.move(x, y)
             mouse = (round(x, 1), round(y, 1))
         for event in r["events"]:
-            page.mouse.down() if event == "down" else page.mouse.up()
+            if isinstance(event, dict):  # a keystroke: a character is typed, a name ("Enter") is pressed
+                key = event["key"]
+                page.keyboard.type(key) if len(key) == 1 else page.keyboard.press(key)
+            elif event == "down":
+                page.mouse.down()
+            else:
+                page.mouse.up()
         page.evaluate(SETTLE)
         if not on_frame(r):
             return r
@@ -181,25 +189,51 @@ def write_script(timeline):
 
 
 def write_youtube(timeline, url):
+    """Title, description (with chapters) and tags for YouTube, every figure from the rendered timeline."""
     f = timeline["facts"]
+    mha = lambda ha: f"{ha / 1e6:.1f}".rstrip("0").rstrip(".") + " million"
     chapters = "\n".join(f"{clock_label(sc['at'])} {sc['title']}" for sc in timeline["scenes"] if sc["id"] != "end")
+    search = f.get("search") or {}
+    found = f"type \"{search['query']}\" and it finds {search['count']:,} fires that burned {search['share']}% of everything" if search else ""
+    records = f"{f['records'] / 1e6:.1f} million real records, " if f.get("records") else ""
     (OUT / "youtube.txt").write_text(f"""TITLE
-Every wildfire in Saskatchewan since {f['firstYear']}, replayed | Emberline
+Every Saskatchewan Wildfire Since {f['firstYear']}, Replayed: {f['fires']:,} Fires on One Map | Emberline
+
+ALTERNATIVE TITLES
+{f['fires']:,} Wildfires, {mha(f['hectares']).replace('million', 'Million')} Hectares: Saskatchewan's Fire Record Brought to Life
+Watch {f['lastYear'] - f['firstYear'] + 1} Years of Saskatchewan Wildfires Ignite, Spread and Scar the Map
 
 DESCRIPTION
-{f['fires']:,} recorded wildfires and {f['hectares']:,} hectares burned, {f['firstYear']} to {f['lastYear']}, replayed on the day each one started. Then a true spread replay rebuilt from satellite detections, the record's biggest lightning outbreak, the whole record in 3D, a live view built on SPSA's own GIS services, and every source behind it.
+Since {f['firstYear']}, Saskatchewan has recorded {f['fires']:,} wildfires, burning {f['hectares']:,} hectares. Emberline replays every one of them on the day it was reported: fires flare, glow while they burn, and cool to scars.
+
+This is a tour of Emberline, an interactive wildfire atlas built entirely from public data. You'll see:
+🔥 The {f['topYear']} season, the worst in the record ({mha(f['topHa'])} hectares), replayed day by day
+🔥 The {f['largest']}, opened as a detail card, then rebuilt from satellite detections in a True Spread Replay
+⚡ The record's biggest lightning outbreak, strike by strike
+🔎 Plain-language search: {found}
+🧊 The whole record as 3D hexagon columns
+📡 A live view built on the Saskatchewan Public Safety Agency's own GIS services and national satellite feeds
+🌳 Read the rings: every source behind every number, drawn as a fire-scarred tree cross-section
 
 Try it yourself: {url or '[add the link]'}
 
-Everything in this video is the real application, filmed frame by frame. Every figure is computed from the data at render time. The narration is a synthetic voice (Kokoro, generated locally) and the music and sound effects are synthesized.
-
+Chapters
 {chapters}
 
-Sources: Canadian National Fire Database (NRCan), National Burned Area Composite (NRCan), CWFIS satellite hotspots, Saskatchewan Public Safety Agency ArcGIS services, ECCC MSC GeoMet lightning. Burn circles have the same area as the reported fire, not its perimeter; the spread front is interpolated between real detections.
+How it was made
+Everything in this video is the real, running application, filmed one exact frame at a time by a script: the cursor, typing, zooms and clicks drive the actual interface. Nothing is mocked up. Every figure on screen and in the narration is computed from the data when the video is rendered. {f['sources']} sources, {records}and not one data file in the code repository: every dataset rebuilds from its public source with one command. The narration is a synthetic voice (Kokoro, generated locally), and the music and sound effects are synthesized.
+
+Sources
+Canadian National Fire Database and National Burned Area Composite (Natural Resources Canada, Canadian Forest Service); CWFIS satellite hotspots; Saskatchewan Public Safety Agency ArcGIS services; ECCC MSC GeoMet lightning. NRCan and ECCC data under the Open Government Licence – Canada.
+
+Notes
+Burn circles have the same area as the reported fire, not its shape. The spread front is interpolated between real satellite detections. Live figures are as of the render date.
 Independent visualization. Not a Government of Saskatchewan or SPSA product.
 
+#Saskatchewan #Wildfire #DataVisualization
+
 TAGS
-Saskatchewan, wildfire, forest fire, SPSA, data visualization, open data, maps, WebGL, deck.gl, MapLibre
+Saskatchewan, wildfire, wildfires, forest fire, Saskatchewan wildfires, SPSA, Saskatchewan Public Safety Agency, Canada wildfire, boreal forest, fire season, wildfire map, lightning, satellite hotspots, CNFDB, NBAC, CWFIS, open data, data visualization, interactive map, 3D map, WebGL, deck.gl, MapLibre, Emberline
 """, encoding="utf-8")
 
 
@@ -284,20 +318,41 @@ def render(args):
     if args.until:
         timeline["total"] = min(timeline["total"], args.until)
     (OUT / "timeline.json").write_text(json.dumps(timeline, indent=1), encoding="utf-8")
-    wav = OUT / f"{NAME}{suffix}.wav"
-    sound.mix(timeline, VOICE_DIR, clips, wav, fps)
-    final = OUT / f"{NAME}{suffix}.mp4"
-    subprocess.run([ffmpeg, "-y", "-loglevel", "error", "-i", str(silent), "-i", str(wav),
-                    "-af", "aformat=sample_rates=48000:channel_layouts=stereo,loudnorm=I=-14:TP=-1.5:LRA=11",
-                    "-map", "0:v", "-map", "1:a", "-c:v", "copy", "-c:a", "aac", "-b:a", "256k", "-shortest", "-movflags", "+faststart", str(final)], check=True)
-    silent.unlink()
-    write_captions(timeline, clips)
-    write_script(timeline)
-    write_youtube(timeline, args.url)
-    write_storyboard(timeline, boards)
-    log("wrote", final, f"{final.stat().st_size / 1e6:.1f} MB, with", f"{NAME}.srt, script.md, youtube.txt, storyboard.html in", OUT)
+    (OUT / f"boards{suffix}.json").write_text(json.dumps(boards), encoding="utf-8")
+    finish(timeline, clips, boards, fps, suffix, args.url)
     if errors:
         raise SystemExit("The page reported errors during the render (listed above).")
+
+
+def finish(timeline, clips, boards, fps, suffix, url):
+    """Score the filmed timeline, put picture and sound together, and write the captions and write-ups."""
+    ffmpeg = imageio_ffmpeg.get_ffmpeg_exe()
+    silent = OUT / f"{NAME}{suffix}-silent.mp4"
+    wav = OUT / f"{NAME}{suffix}.wav"
+    started = time.time()
+    sound.mix(timeline, VOICE_DIR, clips, wav, fps)
+    log(f"mixed the soundtrack in {time.time() - started:.0f}s")
+    final = OUT / f"{NAME}{suffix}.mp4"
+    subprocess.run([ffmpeg, "-y", "-loglevel", "error", "-i", str(silent), "-i", str(wav),
+                    "-af", "aformat=sample_rates=48000:channel_layouts=stereo,loudnorm=I=-14:TP=-1.5:LRA=11,aresample=48000",
+                    "-map", "0:v", "-map", "1:a", "-c:v", "copy", "-c:a", "aac", "-b:a", "256k", "-shortest", "-movflags", "+faststart", str(final)], check=True)
+    write_captions(timeline, clips)
+    write_script(timeline)
+    write_youtube(timeline, url)
+    write_storyboard(timeline, boards)
+    log("wrote", final, f"{final.stat().st_size / 1e6:.1f} MB, with", f"{NAME}.srt, script.md, youtube.txt, storyboard.html in", OUT)
+
+
+def remix(args):
+    """Remake the sound and the final file from the last render's picture and timeline (no filming)."""
+    suffix = "-preview" if args.preview else ""
+    if not (OUT / f"{NAME}{suffix}-silent.mp4").exists() or not (OUT / "timeline.json").exists():
+        raise SystemExit("Nothing to remix: render the film first.")
+    timeline = json.loads((OUT / "timeline.json").read_text(encoding="utf-8"))
+    clips = json.loads((VOICE_DIR / "manifest.json").read_text(encoding="utf-8"))["clips"]
+    boards_file = OUT / f"boards{suffix}.json"
+    boards = json.loads(boards_file.read_text(encoding="utf-8")) if boards_file.exists() else {}
+    finish(timeline, clips, boards, 15 if args.preview else args.fps, suffix, args.url)
 
 
 def main():
@@ -308,9 +363,10 @@ def main():
     parser.add_argument("--stills", help="comma-separated seconds to save as JPEGs")
     parser.add_argument("--until", type=float, help="stop after this many seconds of film")
     parser.add_argument("--url", help="address for the end card and the YouTube description")
+    parser.add_argument("--remix", action="store_true", help="remake only the sound and final file from the last render")
     args = parser.parse_args()
     OUT.mkdir(parents=True, exist_ok=True)
-    render(args)
+    remix(args) if args.remix else render(args)
 
 
 if __name__ == "__main__":

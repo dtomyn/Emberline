@@ -133,6 +133,13 @@ real detections, which the panel and About dialog say. Keep that wording if you 
 - Elements with `hidden` that also set `display` in CSS need a `[hidden] { display: none }` rule, or the invisible
   overlay eats every click (this hit `.sources` and `.doc-card`).
 - Voice clips come from `scripts/kokoro-voice.py` into `data/film/voice/`; change a line and only it is remade.
+- The director's toolkit (`film/director.js`): `clickOn`/`drag`/`type`/`press` (real mouse and keystrokes via
+  render.py), `zoomTo`/`zoomOut` (a newer camera move cancels one in flight), `spot` (dim all but one control,
+  page space), `stat` (counting number + riser/hit), `burn('cover'|'reveal')` (noise fire-front transition),
+  `letterbox`, `embers`, `chip`. Frame-space graphics live in `.f-hud`; page-space ones (spot, cursor) zoom with it.
+- The search scene's figures come from `src/search.js` over `state.all` (what the Search tab shows); the ring
+  summary from `/api/provenance`, counted like `sources-view.js`. `sources.locate({ year | source })` gives
+  the cursor a scar or a source bore on the rings canvas.
 
 ## Search mode: built
 

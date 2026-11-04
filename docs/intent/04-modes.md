@@ -91,7 +91,10 @@ Each entry gives what the feature is **for**, what it must **show**, and what it
 
 - **For:** a YouTube video that shows SPSA and anyone else what the app does, with the same "wow".
   The real app filmed frame by frame: a drawn cursor (the real mouse follows it, so hovers and
-  clicks are the app's own), video zoom-ins, click sounds, titles, Kokoro narration and a score.
+  clicks are the app's own), real typing into Search, video zoom-ins, a spotlight on the control being
+  used, numbers that count up, burn transitions, click and key sounds, titles, Kokoro narration and a
+  score. It opens on the record's size and closes on Read the rings, so the payoff is that every
+  number traces to a named public source.
 - **Never:** a mock-up. Every shot is the running app on the loaded data, and every spoken figure
   is computed at render time. The live scene says "labelled simulation" when that is what it shows.
 - **Rerunnable:** one command remakes it after any data or UI change (`film/storyboard.md`).
