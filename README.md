@@ -4,6 +4,8 @@ An animated, interactive atlas of every recorded wildfire in Saskatchewan. It re
 seasons day by day, explores 45+ years of history in 3D, and pulls live data from the
 Saskatchewan Public Safety Agency (SPSA) and Natural Resources Canada.
 
+See: https://www.youtube.com/watch?v=zYNXv4cRkvA
+
 | Mode | What it does |
 |---|---|
 | **Replay** | Plays fire seasons day by day. Each ignition flashes, grows to its reported size and cools to a burn scar. **Lightning storms** strike first: a bolt lands at every lightning-caused fire, and clusters get a drifting storm cell. Turn on **Hear the season** (🔊 or `M`) and every ignition plays a note. Scrub the season timeline, change speed, filter by cause or size. |
