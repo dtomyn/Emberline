@@ -13,12 +13,13 @@
 //   engine: the open-source code and type that render it
 import { CONFIG } from './config.js';
 
-const { arcgis, cwfis } = CONFIG;
+const { arcgis, cwfis, geomet, scene } = CONFIG;
 const OGL = { name: 'Open Government Licence – Canada', url: 'https://open.canada.ca/en/open-government-licence-canada' };
 const CNFDB_ZIP = 'https://cwfis.cfs.nrcan.gc.ca/downloads/nfdb/fire_pnt/current_version/NFDB_point_txt.zip';
-const GEOMET = 'https://geo.weather.gc.ca/geomet';
-const CARTO_STYLE = 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json';
-const TERRARIUM_TILE = 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/5/7/10.png';
+const GEOMET = geomet.wmsUrl;
+const CARTO_STYLE = scene.basemapStyle;
+// One real tile over Saskatchewan, for the live check
+const TERRARIUM_TILE = scene.terrainTiles.replace('{z}', '5').replace('{x}', '7').replace('{y}', '10');
 const [w, s, e, n] = cwfis.bbox;
 
 const wfsUrl = (params) => `${cwfis.wfsUrl}?${new URLSearchParams({ service: 'WFS', version: '1.1.0', request: 'GetFeature', ...params })}`;
@@ -139,10 +140,10 @@ export const SOURCES = [
     name: 'Canadian Lightning Detection Network', short: 'CLDN lightning',
     owner: 'Environment and Climate Change Canada, Meteorological Service of Canada (MSC GeoMet).',
     gives: 'The last 3 hours of lightning flash density over the province, looped in Live mode.',
-    how: 'WMS layer Lightning_2.5km_Density, one frame per 10-minute step of its time dimension, fetched once as images.',
-    request: `GET ${GEOMET}?service=WMS&version=1.3.0&request=GetMap&layers=Lightning_2.5km_Density&crs=EPSG:3857&time=<step>&…`,
+    how: `WMS layer ${geomet.lightningLayer}, one frame per 10-minute step of its time dimension, fetched once as images.`,
+    request: `GET ${GEOMET}?service=WMS&version=1.3.0&request=GetMap&layers=${geomet.lightningLayer}&crs=EPSG:3857&time=<step>&…`,
     page: 'https://eccc-msc.github.io/open-data/msc-geomet/readme_en/', licence: OGL,
-    ping: { kind: 'wms-time', url: `${GEOMET}?service=WMS&version=1.3.0&request=GetCapabilities&layer=Lightning_2.5km_Density` },
+    ping: { kind: 'wms-time', url: `${GEOMET}?service=WMS&version=1.3.0&request=GetCapabilities&layer=${geomet.lightningLayer}` },
   },
   {
     id: 'live-sim', group: 'live', color: '#c9b8ff', truth: 'simulated',
@@ -171,8 +172,8 @@ export const SOURCES = [
     owner: 'Mapzen terrain tiles on the AWS Registry of Open Data, blended from SRTM, GMTED2010, ETOPO1, NRCan CDEM and others.',
     gives: '3D terrain and hillshade relief, lit by the real sun.',
     how: 'raster-dem source, Terrarium encoding, up to zoom 12.',
-    request: 'GET https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png',
-    page: 'https://registry.opendata.aws/terrain-tiles/', licence: { name: 'Per-source attribution (see the registry page)', url: 'https://github.com/tilezen/joerd/blob/master/docs/attribution.md' },
+    request: `GET ${scene.terrainTiles}`,
+    page: scene.terrainPage, licence: { name: 'Per-source attribution (see the registry page)', url: 'https://github.com/tilezen/joerd/blob/master/docs/attribution.md' },
     ping: { kind: 'get', url: TERRARIUM_TILE },
   },
 

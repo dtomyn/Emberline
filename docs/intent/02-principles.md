@@ -38,7 +38,8 @@ The visuals are only impressive if they are true. These rules apply everywhere:
 
 - **The map is always the real app.** Pausing the film leaves the viewer in a live, explorable
   view, not a frozen frame.
-- **Every mode is reachable by keyboard** (`Space`, arrows, `1`–`5`, `W`, `M`, `Esc`).
+- **Every mode is reachable by keyboard** (`Space`, arrows, `1`–`4` modes, `5` story, `/` search,
+  `S` sources, `W` watch, `M` sound, `Esc`).
 - **Sound never starts on its own.** Audio begins only from a click (browser autoplay rules,
   and courtesy), and the film's fire bed stays subtle and mutable.
 - **Fail soft.** One failed service or one exception must not freeze the app. Live data falls

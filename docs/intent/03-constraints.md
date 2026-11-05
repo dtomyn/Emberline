@@ -39,10 +39,12 @@ and nothing to break.
 
 ## Code conventions that follow from this
 
-- ES modules throughout. `src/` modules that the server imports (`config.js`, `data.js`,
-  `services/live.js`, `narration.js`, `spread.js`) must also run in Node, so browser globals are guarded.
-- Every external endpoint lives in `src/config.js` and can be overridden by query string (confined to
-  this site or the SPSA server, see the decision log).
+- ES modules throughout. `src/` modules that the server, loaders or film scripts import (`config.js`,
+  `data.js`, `services/*`, `search.js`, `provenance.js`, `story.js`, `narration.js`, `spread.js`,
+  `lightning.js`) must also run in Node, so browser globals are guarded.
+- Every external endpoint the browser calls lives in `src/config.js` (a test enforces it). The data API
+  and active-fire layer can be overridden by query string, confined to this site or the SPSA server
+  (see the decision log).
 - Text from data or services reaches HTML only through `esc()` (`src/data.js`). No inline scripts or
   `on…=` attributes: the CSP in `server/http.mjs` blocks them.
 - Parsers and loaders have tests (`npm test`); any change to them adds tests.

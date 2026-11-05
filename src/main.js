@@ -135,7 +135,7 @@ function applyFilters({ keepTime = true } = {}) {
 // ---------------------------------------------------------------- map
 const map = new maplibregl.Map({
   container: 'map',
-  style: 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json',
+  style: CONFIG.scene.basemapStyle,
   center: [-104, 52.5], zoom: 3.3, pitch: 0, bearing: 0,
   minZoom: 3, maxZoom: 12, maxPitch: 70, attributionControl: { compact: true },
 });

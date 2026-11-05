@@ -40,7 +40,8 @@ When you trade off, keep both. Don't simplify the visuals to save effort, and do
 - **Live data tiers** (`src/services/live.js`): configured SPSA layer → auto-discovery in the
   SPSA `Wildfire`/`SPSA` ArcGIS folders → CWFIS satellite hotspots (`agency='SK'`) → labelled
   simulation. SPSA publishes seasonal layers, so discovery lets the app pick them up without code changes.
-- **Every external endpoint lives in `src/config.js`** and can be overridden by query string.
+- **Every external endpoint the browser calls lives in `src/config.js`** (`tests/config.test.mjs` fails on an https URL
+  written anywhere else in `src/`). Only `?api=`, `?data=` and `?activeFires=` can be overridden by query string.
 
 ## Verified facts about external services (as of 2026-11-03)
 
@@ -84,13 +85,13 @@ Re-check these before relying on them. Government endpoints change.
 - Loopback bind (127.0.0.1 and ::1) by default, foreign `Host` headers get 421, GET/HEAD only, 500s carry no detail.
   `/api/live?refresh` is throttled to once a minute. Tests: `tests/security.test.mjs`.
 
-## Spread mode (True Spread Replay, idea 1 in IDEAS.md): built
+## Spread mode (True Spread Replay): built
 
 `npm run load:spread` → `spread_fires` / `spread_hotspots`. Shared algorithms live in `src/spread.js`
 (tested in `tests/spread.test.mjs`) and the UI in `src/spread-mode.js`. The front is interpolated between
 real detections, which the panel and About dialog say. Keep that wording if you change the method.
 
-## Lightning, sound and scene (ideas 4, 10, 12): built
+## Lightning, sound and scene: built
 
 - `src/lightning.js`: storms are lightning ignitions linked within 1 day / 60 km. Bolts and cells run
   on the **wall clock** once triggered (a replay day lasts milliseconds at speed), so strikes stay
@@ -105,7 +106,7 @@ real detections, which the panel and About dialog say. Keep that wording if you 
 - `frame()` schedules the next frame first, so one exception can't freeze the app.
 - `src/sonify.js` starts its AudioContext only from the 🔊 click (browser autoplay rules).
 
-## Documentary mode (Emberline Presents, idea 2): built
+## Documentary mode (Emberline Presents): built
 
 - `src/story.js` gives each chapter a `say` line (numbers written for speech via `src/narration.js`), `cues`
   that fire on a spoken word, and a `hold`. `src/documentary.js` plays it: title card → chapters → end card.
@@ -172,11 +173,9 @@ real detections, which the panel and About dialog say. Keep that wording if you 
 
 ## Open threads / ideas not yet done
 
-The full idea backlog, with verified public data sources and a suggested build order, is in
-[docs/IDEAS.md](docs/IDEAS.md). Narration should use the local Kokoro setup from
-`C:\DevSource\IRISIdeas` (voice `af_heart`); generated audio belongs in gitignored `data/`.
-
+The backlog, with verified public data sources and a suggested order, is in
+[docs/intent/08-backlog.md](docs/intent/08-backlog.md) (next: Your Community's Fire Story).
+Narration should use the local Kokoro setup from `C:\DevSource\IRISIdeas` (voice `af_heart`);
+generated audio belongs in gitignored `data/`.
 
 - Small-screen layout works but is unpolished.
-- Possible additions: fire-weather (FWI) overlays from CWFIS, decade comparison view, shareable
-  URL state beyond the mode hash, `live_snapshots` history playback.

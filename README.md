@@ -23,7 +23,7 @@ azimuth, a day/night terminator that sweeps across the province, a sky that turn
 fires that glow brighter after dark. The **Scene** panel switches between an accelerated day cycle,
 day, golden hour and night, and sets the relief exaggeration.
 
-Keyboard: `Space` play/pause · `←`/`→` step a week (a day in Spread) · `1`–`5` modes · `/` search · `W` watch the film · `M` sound · `Esc` close.
+Keyboard: `Space` play/pause · `←`/`→` step a week (a day in Spread) · `1`–`5` modes · `/` search · `S` sources · `W` watch the film · `M` sound · `Esc` close.
 
 ---
 
@@ -49,8 +49,7 @@ what each data source may claim, the decision log and current status, is documen
 | [Data](docs/intent/05-data.md) | Why each source, and recorded vs. derived vs. interpolated vs. illustrative vs. simulated |
 | [Decisions](docs/intent/06-decisions.md) | The choices made, the alternatives, and why |
 | [Status](docs/intent/07-status.md) | Built, unfinished, next |
-
-Ideas for what comes next, with verified public data sources, are in [docs/IDEAS.md](docs/IDEAS.md).
+| [Backlog](docs/intent/08-backlog.md) | Ideas not yet built, with verified public data sources |
 
 ---
 
@@ -110,7 +109,7 @@ index.html, src/          front end (MapLibre GL + deck.gl from CDN, ES modules,
   lightning.js            storm grouping, bolts and storm cells; live CLDN lightning loop
   sonify.js               Hear the Season: Web Audio notes, crackle, rumble, thunder
   data.js                 enrichment and aggregation helpers
-  config.js               every external endpoint, overridable by query string
+  config.js               every external endpoint; data API and SPSA layer overridable by query string
   services/arcgis.js      ArcGIS REST client: catalog crawl, layer metadata, paged GeoJSON queries
   services/live.js        live incident resolution, normalization, simulation fallback
 server/

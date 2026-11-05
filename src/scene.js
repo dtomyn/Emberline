@@ -11,9 +11,10 @@
  *            day, golden (evening golden hour) and night.
  */
 import { solarTerms, sunAt, sunAltitude, atLocalTime, localClock } from './sun.js';
+import { CONFIG } from './config.js';
 
-const TERRARIUM = 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png';
-const TERRAIN_ATTRIBUTION = 'Terrain: <a href="https://registry.opendata.aws/terrain-tiles/">Terrarium tiles</a> (AWS Open Data)';
+const TERRARIUM = CONFIG.scene.terrainTiles;
+const TERRAIN_ATTRIBUTION = `Terrain: <a href="${CONFIG.scene.terrainPage}">Terrarium tiles</a> (AWS Open Data)`;
 const CYCLE_MS = 48000;               // one full day/night every 48 s in cycle mode
 // Covers the whole view at the minimum zoom; edges are feathered so no box ever shows
 const SHADE = { w: 192, h: 128, west: -172, east: -38, south: 18, north: 78, feather: 14 };
