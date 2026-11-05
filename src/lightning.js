@@ -9,6 +9,7 @@
  *   from ECCC MSC GeoMet (WMS, public, CORS-enabled), looped as an animation over the province.
  */
 import { esc } from './data.js';
+import { CONFIG } from './config.js';
 
 const { ScatterplotLayer, PathLayer } = globalThis.deck ?? {};
 
@@ -232,8 +233,7 @@ export function createLightning({ onStrike } = {}) {
 }
 
 // ---------------------------------------------------------------- live CLDN lightning
-const GEOMET = 'https://geo.weather.gc.ca/geomet';
-const LAYER = 'Lightning_2.5km_Density';
+const { wmsUrl: GEOMET, lightningLayer: LAYER } = CONFIG.geomet;
 const REGION = { west: -121, east: -91, south: 47, north: 62.5 };
 const SK_BOX = { west: -110, east: -101.4, south: 49, north: 60 };
 const mx = (lon) => (lon * 20037508.34) / 180;

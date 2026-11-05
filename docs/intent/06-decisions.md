@@ -24,8 +24,13 @@ Each entry: the decision, the alternatives, and why. Add new entries at the bott
   tiers (configured layer → discovered layer → CWFIS hotspots → labelled simulation) mean the
   app shows something real year-round and picks up SPSA's layer without a code change.
 
-### Every endpoint in `src/config.js`, overridable by query string
-- **Why:** a new endpoint can be tested in fire season with a URL, without a redeploy.
+### Every endpoint in `src/config.js`; a few overridable by query string
+- **Why:** one place to see and change every service the app talks to, which the Sources view also reads,
+  so the catalogue's requests and live checks are always the app's own. The data API and the SPSA
+  active-fire layer can be overridden, so a new endpoint can be tested in fire season with a URL.
+- **Enforced (2026-11-05):** the basemap, terrain tiles and GeoMet lightning had drifted into
+  `main.js`, `scene.js` and `lightning.js`; they moved to `CONFIG.scene` and `CONFIG.geomet`, and
+  `tests/config.test.mjs` now fails on an https URL written anywhere else in `src/`.
 - **Limit (2026-11-05):** anyone can craft such a link, so `?api=` and `?data=` must stay on the same
   origin and `?activeFires=` must be an https layer on `gis.saskatchewan.ca`; anything else is ignored.
 

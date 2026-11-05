@@ -1,20 +1,19 @@
 # 7. Status and direction
 
-As of 2026-11-03.
+As of 2026-11-05.
 
 ## Built
 
-| Feature | Idea # in [IDEAS.md](../IDEAS.md) |
-|---|---|
-| Replay, Explore, Live, Story modes; fire detail cards | (core) |
-| Search: plain-language and faceted search, `/api/search`, CSV/GeoJSON export, shareable links | (core) |
-| True Spread Replay | 1 |
-| Emberline Presents: narrated film with Kokoro voice and fire sound bed | 2 (core) |
-| Lightning Storms (history and live) | 4 |
-| Hear the Season | 10 |
-| Sources: Read the rings (every source, request, licence, live check) | (core) |
-| Living Terrain and Sky: terrain and day/night lighting | 12 (smoke plumes not yet) |
-| Explainer film for YouTube, rendered by `npm run film` | (outreach) |
+- Replay, Explore, Live and Story modes; fire detail cards
+- Search: plain-language and faceted search, `/api/search`, CSV/GeoJSON export, shareable links
+- True Spread Replay (Spread mode)
+- Emberline Presents (▶ Watch): narrated film with Kokoro voice and a fire sound bed
+- Lightning Storms (history and live)
+- Hear the Season (sonified replay)
+- Sources: Read the rings (every source, request, licence, live check)
+- Living Terrain and Sky: 3D terrain and day/night lighting (smoke plumes not yet)
+- Explainer film for YouTube, rendered by `npm run film`
+- Security hardening (2026-11-05): escaping, CSP, loopback bind, Host check, SRI, throttling
 
 ## Unfinished or unverified
 
@@ -24,10 +23,10 @@ As of 2026-11-03.
 
 ## Direction
 
-The backlog and its suggested build order are in [IDEAS.md](../IDEAS.md). Next in line:
-**Your Community's Fire Story** (idea 3). Other candidates: fire-weather (FWI) overlays, a decade
-comparison view, shareable URL state for the other modes (Search already keeps its query in the URL),
-and `live_snapshots` history playback.
+The backlog and its suggested order are in [08-backlog.md](08-backlog.md). Next in line:
+**Your Community's Fire Story**. Other candidates: smoke and fire-weather (FWI) overlays, season
+and decade comparisons, shareable URL state for the other modes (Search already keeps its query
+in the URL), and `live_snapshots` history playback.
 
 Every new idea must meet the same bar as the built ones: striking *and* real, public data
 loaded by a script, and anything simulated or illustrative labelled.

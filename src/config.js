@@ -1,6 +1,6 @@
 // Central configuration. Everything that points at an external service lives here.
 //
-// Some values can be overridden at runtime with a URL query parameter, e.g.
+// A few values can be overridden at runtime with a URL query parameter, e.g.
 //   ?activeFires=https://gis.saskatchewan.ca/arcgis/rest/services/<Folder>/<Service>/MapServer/0
 // which makes it easy to test a new endpoint during fire season without a redeploy.
 //
@@ -68,6 +68,21 @@ export const CONFIG = {
     perimeters: 'public:m3_polygons_current',
     agency: 'SK',
     bbox: [-110.1, 48.9, -101.2, 60.1],
+  },
+
+  // ECCC MSC GeoMet WMS. Lightning_2.5km_Density has a 3-hour, 10-minute time dimension and sends
+  // Access-Control-Allow-Origin: * (verified 2026-11).
+  geomet: {
+    wmsUrl: 'https://geo.weather.gc.ca/geomet',
+    lightningLayer: 'Lightning_2.5km_Density',
+  },
+
+  // What the map is drawn on: CARTO's Dark Matter vector style (OpenStreetMap data) and the
+  // public Terrarium elevation tiles on AWS Open Data (no key), used for 3D terrain and hillshade.
+  scene: {
+    basemapStyle: 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json',
+    terrainTiles: 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png',
+    terrainPage: 'https://registry.opendata.aws/terrain-tiles/',
   },
 
   liveRefreshMinutes: Number.isFinite(minutes) && minutes >= 1 ? Math.min(minutes, 1440) : 5,

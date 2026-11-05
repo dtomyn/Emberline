@@ -13,6 +13,7 @@ is used and **how true** each thing on screen is.
 | **CWFIS hotspots** (MODIS, VIIRS) | Spread mode, Live mode | Real satellite detections with time, FRP and wind; they turn a final perimeter into observed growth. |
 | **SPSA ArcGIS server** | Live incidents, communities | SPSA's own published layers. Auto-discovery picks up seasonal layers without code changes. |
 | **ECCC GeoMet CLDN lightning** | Live lightning | Public, CORS-enabled, 10-minute frames. |
+| **CARTO Dark Matter basemap** (OpenStreetMap data) | Base map | Dark, quiet tiles that let fire glow; public, no key. |
 | **Terrarium elevation tiles** (AWS Open Data) | 3D terrain, hillshade | Public, no key. |
 | **Sun position** (computed) | Lighting | No data needed. |
 | **Mock data** (generated) | Offline fallback | Lets the app run without a network. Always labelled. |
@@ -41,4 +42,4 @@ Everything on screen falls into one of these, and the UI must not blur them.
 - Prescribed burns and assistance requests are dropped; they are not wildfires in SK.
 - Large NBAC perimeters are simplified on load; the area total stays NBAC's.
 - Government endpoints change. Facts about them are dated in [CLAUDE.md](../../CLAUDE.md) and
-  [IDEAS.md](../IDEAS.md); re-check before relying on them.
+  [08-backlog.md](08-backlog.md); re-check before relying on them.
