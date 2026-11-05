@@ -29,6 +29,8 @@ SOUNDS = {
     "ɹᵻdʒˈiːnə": "ɹᵻdʒˈaɪnə",
     "lˌæ ɹˈɔndʒ": "lə ɹˈɑːnʒ",
     "ˈaɪlˌɑːlækɹˈɔs": "ˈiːl ɐ lɐ kɹˈɔs",
+    # The project's own name: "EMber-line", as in fire embers (the phonemizer stresses "BER")
+    "ɛmbˈɜːlaɪn": "ˈɛmbɚlˌaɪn",
 }
 GAP = 0.32  # seconds of silence between sentences
 

@@ -106,6 +106,9 @@ real detections, which the panel and About dialog say. Keep that wording if you 
 - The phonemizer reads "1981" as "nineteen hundred eighty one", so `speakable()` spells years out. Run Python
   with `-I`; on Windows reconfigure stdout to UTF-8 before printing phonemes.
 - Pronunciation of names is unverified by ear beyond the IRISIdeas fixes. Listen before a demo.
+  "Emberline" is said **EM-ber-line** (as in embers); the phonemizer stresses "BER", so `SOUNDS` fixes it.
+- Thunder (live `sonify.js` and film `sound.py`) is a soft, distant low rumble with no crack, at most one per 1.5 s.
+  The owner found the louder cracking version harsh; don't raise it.
 - The film's sound bed is a **crackling wood fire** (`src/fireplace.js`), chosen by the owner over music. It must stay
   **subtle**: `LEVEL`/`DUCKED` were set by rendering it offline (`prerender`) and comparing RMS with the Kokoro clips
   (fire ≈ −34 to −38 dBFS between lines, −43 to −46 under the voice; voice ≈ −22.6). Re-measure if you change

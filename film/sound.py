@@ -224,17 +224,18 @@ def boom():
 
 
 def thunder(seed):
-    """A crack, then a low rumble that rolls irregularly for a few seconds."""
+    """Distant thunder: a soft low rumble that rolls irregularly for a few seconds (no sharp crack,
+    which the owner found harsh)."""
     r = numpy.random.default_rng(seed)
     n = seconds(4.5)
     t = numpy.arange(n) / SR
-    rumble = band(r.standard_normal(n), 25, 260)
+    rumble = band(r.standard_normal(n), 25, 180)
     rolls = numpy.zeros(n)
     for _ in range(6):
-        c, w = r.uniform(0.1, 2.8), r.uniform(0.25, 0.9)
+        c, w = r.uniform(0.3, 2.8), r.uniform(0.35, 0.9)
         rolls += r.uniform(0.4, 1) * numpy.exp(-((t - c) / w) ** 2)
-    crack = band(r.standard_normal(n), 900, 5000) * numpy.exp(-t / 0.05) * 0.5
-    out = rumble / numpy.abs(rumble).max() * rolls * numpy.exp(-t / 2.2) + crack / numpy.abs(crack).max() * 0.35
+    fade_in = numpy.clip(t / 0.25, 0, 1)
+    out = rumble / numpy.abs(rumble).max() * rolls * numpy.exp(-t / 2.2) * fade_in
     return out / numpy.abs(out).max()
 
 
@@ -281,9 +282,10 @@ def mix(timeline, voice_dir, clips, out_wav, fps):
             add(fx, hits, e["at"], 0.32, 0.5)
         elif e["kind"] == "burn":
             add(fx, burn(e["dur"], e.get("dir", 1) > 0), e["at"], 0.26, 0.5)
-        elif e["kind"] == "thunder" and e["at"] - last_thunder > 0.45:
+        elif e["kind"] == "thunder" and e["at"] - last_thunder > 1.5:
+            # Sparse and quiet: one distant roll at most every 1.5 s, well under the voice
             last_thunder = e["at"]
-            add(fx, thunders[int(e["at"] * 7) % 4], e["at"] + 0.15, 0.18 + 0.3 * e.get("intensity", 0.6), 0.5)
+            add(fx, thunders[int(e["at"] * 7) % 4], e["at"] + 0.15, 0.05 + 0.07 * e.get("intensity", 0.6), 0.5)
     voice = voice_track(voiced, clips, voice_dir, total)
     track = voice + music * 0.10 + fire * 0.07 + fx
     track /= max(1.0, numpy.abs(track).max() / 0.95)

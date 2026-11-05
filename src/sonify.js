@@ -29,7 +29,7 @@ export function noteFor(fire) {
 }
 
 export function createSonifier() {
-  let ctx = null, out, verbIn, noise, bed, bedFilter, rumble, voices = 0;
+  let ctx = null, out, verbIn, noise, bed, bedFilter, rumble, voices = 0, lastThunder = -9;
   const S = { enabled: false, recent: 0 };
 
   function init() {
@@ -131,17 +131,19 @@ export function createSonifier() {
       rumble.gain.setTargetAtTime(deep ** 2 * 0.45, ctx.currentTime, 0.8);
     },
 
-    /** Thunder: a filtered noise burst, delayed a little like distant sound. */
+    /** Thunder: a soft, distant low rumble (no bright crack), at most one every 1.5 s. */
     thunder(intensity = 0.6) {
       if (!S.enabled || !ctx || voices > MAX_VOICES) return;
+      if (ctx.currentTime - lastThunder < 1.5) return;
+      lastThunder = ctx.currentTime;
       const t = ctx.currentTime + 0.15 + Math.random() * 0.6;
       const src = ctx.createBufferSource(); src.buffer = noise;
       const f = ctx.createBiquadFilter(); f.type = 'lowpass';
-      f.frequency.setValueAtTime(900, t); f.frequency.exponentialRampToValueAtTime(70, t + 2.2);
+      f.frequency.setValueAtTime(320, t); f.frequency.exponentialRampToValueAtTime(60, t + 2.2);
       const g = ctx.createGain();
       const p = ctx.createStereoPanner(); p.pan.value = Math.random() * 1.4 - 0.7;
       src.connect(f).connect(g).connect(p).connect(out); p.connect(verbIn);
-      env(g, t, 0.18 + 0.3 * intensity, 0.03, 2.4);
+      env(g, t, 0.05 + 0.08 * intensity, 0.25, 2.4);
       src.start(t, Math.random()); src.stop(t + 2.6);
       voices++;
       src.onended = () => { voices--; };

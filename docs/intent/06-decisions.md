@@ -85,3 +85,9 @@ Each entry: the decision, the alternatives, and why. Add new entries at the bott
   parser is small rules over tokens, tested in `tests/search.test.mjs`.
 - **Facets:** each is counted with every other filter applied (one pass), so a chip shows what
   choosing it would return rather than a static total.
+
+### Thunder kept soft and distant; the name said EM-ber-line
+- **Alternatives:** a loud crack-and-rumble for each lightning strike.
+- **Why:** the owner found the cracking thunder harsh. Strikes now sound as a quiet low rumble with
+  no crack, at most one per 1.5 s, in both the live app and the film. The voice stressed the
+  middle of "Emberline"; it is meant as embers + line, so `SOUNDS` in `kokoro-voice.py` fixes it.
