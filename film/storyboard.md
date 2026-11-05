@@ -21,7 +21,7 @@ data) and the narration changes with it; only the voice lines whose text changed
 **Open on a number, end on its sources.** The film starts in darkness with one figure counting up (every wildfire
 Saskatchewan has recorded), burns through to the app, shows what you can *do* with that record (replay, open,
 rebuild, search, explore, go live), and ends by turning the whole thing inside out: the Read the rings view,
-where every number just seen traces back to a named public source. For an SPSA audience, the payoff is trust.
+where every number just seen traces back to a named public source. For a public audience, the payoff is trust.
 
 ## Format and craft
 

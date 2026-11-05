@@ -107,4 +107,13 @@ Each entry: the decision, the alternatives, and why. Add new entries at the bott
   its caches, throttles `/api/live?refresh` to once a minute and hides error detail. CDN files carry SRI
   hashes; CSV exports defuse formula cells; the zip reader never inflates past an entry's declared size.
 - **Why:** a review found that a crafted `?api=` link or a hostile name in a live layer could run script
-  in the page. The app shows government data to a government audience, so it must not be a vector.
+  in the page. The app shows government data to the public under a shareable link, so it must not be a vector.
+
+### Audience: the general public, not SPSA (2026-11-05)
+- **Alternatives:** the original framing, a portfolio piece aimed at impressing the Saskatchewan
+  Public Safety Agency.
+- **Why:** SPSA has its own internal systems and is unlikely to need this. The project's real value
+  is helping the general public understand Saskatchewan's wildfire history. SPSA stays a data source
+  (CNFDB records it reports, its public GIS layers) and the authority the app defers to for current
+  incidents and warnings. Wording should be plain and jargon-free; accuracy still has to survive a
+  close look.

@@ -29,8 +29,10 @@ Keyboard: `Space` play/pause · `←`/`→` step a week (a day in Spread) · `1`
 
 ## Why it exists
 
-Emberline is a portfolio project built for the **Saskatchewan Public Safety Agency**. It has two
-goals of equal weight: **visual wow** (cinematic, animated, polished) and **full function** (real
+Emberline is a portfolio project that helps **the general public** understand the history of
+wildfire in Saskatchewan. It is not an official or operational tool: for current incidents,
+evacuations and warnings, follow the Saskatchewan Public Safety Agency. It has two goals of
+equal weight: **visual wow** (cinematic, animated, polished) and **full function** (real
 data, real services, nothing mocked up). Binding them together is a rule of **honesty**: anything
 simulated is labelled SIMULATED, burn circles are equal-area rather than perimeters, interpolated
 and illustrative details say so, and every figure in the story and film is computed from the
