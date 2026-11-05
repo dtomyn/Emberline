@@ -7,8 +7,10 @@ update it in the same commit when an intent or decision changes.
 
 ## Purpose
 
-Emberline is a personal GitHub portfolio project by the repo owner. The goal is to impress
-the **Saskatchewan Public Safety Agency (SPSA)**. Two things matter equally:
+Emberline is a personal GitHub portfolio project by the repo owner. It is built for the
+**general public**: anyone who wants to understand the history of wildfire in Saskatchewan.
+It is not built for the Saskatchewan Public Safety Agency (SPSA), which has its own internal
+systems; SPSA is a data source, not the audience. Two things matter equally:
 
 1. **Visual "wow".** Animated, cinematic, polished. Fires ignite, glow, spread and cool to scars;
    3D hex columns rise; the camera flies through a story. Visual quality is a first-class requirement.

@@ -77,7 +77,8 @@ Each entry gives what the feature is **for**, what it must **show**, and what it
 
 ## ▶ Watch (Emberline Presents)
 
-- **For:** something SPSA can play in a room. The Story as a narrated film of about 2½ minutes,
+- **For:** anyone who would rather watch than click: a classroom, a community meeting, a
+  curious visitor. The Story as a narrated film of about 2½ minutes,
   with camera, data and voice in sync, playing *inside the live app*.
 - **Shows:** title card → chapters → end card. A local Kokoro voice (`af_heart`, the IRISIdeas
   voice) reads each line; cues fire on spoken words; numbers count up; captions run. A subtle
@@ -89,7 +90,7 @@ Each entry gives what the feature is **for**, what it must **show**, and what it
 
 ## Explainer film (`npm run film`, not in the app)
 
-- **For:** a YouTube video that shows SPSA and anyone else what the app does, with the same "wow".
+- **For:** a YouTube video that shows the public (and anyone reviewing the project) what the app does, with the same "wow".
   The real app filmed frame by frame: a drawn cursor (the real mouse follows it, so hovers and
   clicks are the app's own), real typing into Search, video zoom-ins, a spotlight on the control being
   used, numbers that count up, burn transitions, click and key sounds, titles, Kokoro narration and a
