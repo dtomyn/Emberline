@@ -6,7 +6,7 @@
 // what each choice would return, a brushable year histogram, a sortable result list, and the map,
 // where matching fires ignite in the order they started while the rest of the record stays as dust.
 import { CONFIG } from './config.js';
-import { CAUSES, MONTHS, fmtHa, fmtInt, fmtDate } from './data.js';
+import { CAUSES, MONTHS, fmtHa, fmtInt, fmtDate, esc } from './data.js';
 import { CAUSE_COLORS } from './charts.js';
 import {
   SIZE_CLASSES, DURATIONS, SORTS, DEFAULT_RADIUS_KM, emptyQuery, normalizeQuery, mergeQuery, parseText, search,
@@ -16,7 +16,6 @@ import {
 const { ScatterplotLayer, PathLayer, PolygonLayer, TextLayer } = deck;
 const $ = (s) => document.querySelector(s);
 const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
-const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 const ADDITIVE = {
   blend: true, blendColorOperation: 'add', blendColorSrcFactor: 'src-alpha', blendColorDstFactor: 'one',
   blendAlphaOperation: 'add', blendAlphaSrcFactor: 'one', blendAlphaDstFactor: 'one-minus-src-alpha',

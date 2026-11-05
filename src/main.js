@@ -2,7 +2,7 @@
 import { CONFIG } from './config.js';
 import {
   CAUSES, SEASON_START_DOY, SEASON_END_DOY, enrich, lowerBound, summarize, byYear, weeklySeries,
-  tToDate, tToISO, seasonT, yearStartT, fmtHa, fmtInt, fmtDate, EPOCH, DAY, displayName,
+  tToDate, tToISO, seasonT, yearStartT, fmtHa, fmtInt, fmtDate, EPOCH, DAY, displayName, esc,
 } from './data.js';
 import { CAUSE_COLORS, createCauseDonut, createFireClock, createYearBars, createTimelineCanvas, seasonAxis } from './charts.js';
 import { loadActiveIncidents, loadCommunities, loadPerimeters, haversineKm } from './services/live.js';
@@ -348,7 +348,7 @@ function renderThreatList() {
   const list = L.threatList ?? [];
   el.innerHTML = `<h3>Communities within ${state.alertKm} km of an active fire or hotspot</h3>` +
     (list.length
-      ? list.slice(0, 40).map((x, i) => `<div class="threat" data-i="${i}"><span>${x.community.name} <small class="muted">${x.community.kind}</small></span><span>${Math.round(x.km)} km</span></div>`).join('')
+      ? list.slice(0, 40).map((x, i) => `<div class="threat" data-i="${i}"><span>${esc(x.community.name)} <small class="muted">${esc(x.community.kind)}</small></span><span>${Math.round(x.km)} km</span></div>`).join('')
       : `<p class="muted" style="font-size:13px">None right now.</p>`);
   el.querySelectorAll('.threat').forEach((row) => row.addEventListener('click', () => {
     const x = list[row.dataset.i];
@@ -371,11 +371,11 @@ async function refreshLive(force = false) {
   state.live = body;
   computeThreats();
   finder.communitiesChanged();
-  const lis = body.log.map((l) => `<li class="${l.ok ? 'ok' : 'bad'}">${l.source}: ${l.ok ? `${l.n ?? 0}${l.note ? `, ${l.note}` : ''}` : l.error}</li>`).join('');
+  const lis = body.log.map((l) => `<li class="${l.ok ? 'ok' : 'bad'}">${esc(l.source)}: ${l.ok ? `${fmtInt(Number(l.n) || 0)}${l.note ? `, ${esc(l.note)}` : ''}` : esc(l.error)}</li>`).join('');
   $('#live-source').innerHTML = `
-    <div class="src">${body.label} <span class="badge ${body.simulated ? '' : 'real'}">${body.simulated ? 'SIMULATED' : 'LIVE'}</span></div>
+    <div class="src">${esc(body.label)} <span class="badge ${body.simulated ? '' : 'real'}">${body.simulated ? 'SIMULATED' : 'LIVE'}</span></div>
     ${fmtInt(body.incidents.length)} incidents · ${fmtInt(body.perimeters?.length ?? 0)} satellite perimeters · ${fmtInt(body.communities?.length ?? 0)} SPSA communities<br/>
-    <small>Fetched ${new Date(body.fetchedAt).toLocaleTimeString()}</small>
+    <small>Fetched ${esc(new Date(body.fetchedAt).toLocaleTimeString())}</small>
     <ul>${lis}</ul>`;
   if (body.simulated && state.mode === 'live') toast('Off-season: no active incidents published. Showing a labelled simulation.');
   dirty = true;
@@ -529,7 +529,7 @@ function updateStats(force = false) {
   clock(s, highlightMonth);
   yearBars(byYear(state.filtered, state.ys), activeYear);
   $('#largest').innerHTML = s.largest
-    ? `Largest${state.mode === 'timeline' ? ' so far' : ''}: <button data-fire="${s.largest.fire_id}">${displayName(s.largest)}</button>, <b>${fmtHa(s.largest.size_ha)} ha</b>, ${fmtDate(s.largest.ignition_date)} · ${s.largest.general_cause}`
+    ? `Largest${state.mode === 'timeline' ? ' so far' : ''}: <button data-fire="${esc(s.largest.fire_id)}">${esc(displayName(s.largest))}</button>, <b>${fmtHa(s.largest.size_ha)} ha</b>, ${fmtDate(s.largest.ignition_date)} · ${esc(s.largest.general_cause)}`
     : '<span class="muted">No fires yet this season.</span>';
   $('#largest button')?.addEventListener('click', () => openCard(s.largest, true));
 }
@@ -546,10 +546,10 @@ function getTooltip({ object, layer, index }) {
     const ha = object.colorValue ?? pts.reduce((s, p) => s + (p.source ?? p).size_ha, 0);
     return { html: `<b>${fmtInt(n)} fires</b><br/>${fmtHa(ha)} ha burned<br/><small>12 km cell</small>`, className: 'deck-tooltip' };
   }
-  if (id === 'perimeters') return { html: `<b>Satellite fire perimeter</b><br/>${fmtHa(Number(object.properties?.area) || 0)} ha<br/><small>CWFIS M3 · last seen ${object.properties?.lastdate?.slice(0, 10) ?? ''}</small>`, className: 'deck-tooltip' };
-  if (id === 'communities') return { html: `<b>${object.name}</b><br/><small>${object.kind} · SPSA live layer</small>`, className: 'deck-tooltip' };
-  if (id === 'incidents') return { html: `<b>${object.name ?? object.id}</b><br/>${object.status}<br/>${fmtHa(object.size_ha)} ha${object.start ? ` · since ${fmtDate(object.start)}` : ''}`, className: 'deck-tooltip' };
-  if (object.fire_id) return { html: `<b>${displayName(object)}</b><br/>${fmtDate(object.ignition_date)} · ${object.general_cause}<br/>${fmtHa(object.size_ha)} ha<br/><small>click for details</small>`, className: 'deck-tooltip' };
+  if (id === 'perimeters') return { html: `<b>Satellite fire perimeter</b><br/>${fmtHa(Number(object.properties?.area) || 0)} ha<br/><small>CWFIS M3 · last seen ${esc(String(object.properties?.lastdate ?? '').slice(0, 10))}</small>`, className: 'deck-tooltip' };
+  if (id === 'communities') return { html: `<b>${esc(object.name)}</b><br/><small>${esc(object.kind)} · SPSA live layer</small>`, className: 'deck-tooltip' };
+  if (id === 'incidents') return { html: `<b>${esc(object.name ?? object.id)}</b><br/>${esc(object.status)}<br/>${fmtHa(object.size_ha)} ha${object.start ? ` · since ${esc(fmtDate(object.start))}` : ''}`, className: 'deck-tooltip' };
+  if (object.fire_id) return { html: `<b>${esc(displayName(object))}</b><br/>${fmtDate(object.ignition_date)} · ${esc(object.general_cause)}<br/>${fmtHa(object.size_ha)} ha<br/><small>click for details</small>`, className: 'deck-tooltip' };
   return null;
 }
 
@@ -576,12 +576,12 @@ function openCard(f, fly = false) {
       const km = haversineKm(f.latitude, f.longitude, c.latitude, c.longitude);
       if (!best || km < best.km) best = { c, km };
     }
-    nearest = `<dt>Nearest community</dt><dd>${best.c.name} · ${Math.round(best.km)} km</dd>`;
+    nearest = `<dt>Nearest community</dt><dd>${esc(best.c.name)} · ${Math.round(best.km)} km</dd>`;
   }
   card.innerHTML = `
     <button class="close" aria-label="Close">×</button>
-    <div class="kicker">${f.general_cause} · ${f.fire_id}</div>
-    <h2>${displayName(f)}</h2>
+    <div class="kicker">${esc(f.general_cause)} · ${esc(f.fire_id)}</div>
+    <h2>${esc(displayName(f))}</h2>
     <dl>
       <dt>Reported</dt><dd>${fmtDate(f.ignition_date)}</dd>
       <dt>Size</dt><dd>${fmtInt(f.size_ha)} ha (${fmtInt(f.size_ha / 100)} km²)</dd>
@@ -891,7 +891,7 @@ async function boot() {
   try {
     state.sources = await fetchSources();
     if (!state.sources.length) throw new Error('The database is empty. Run "npm run load:cnfdb" to load the National Fire Database, then reload.');
-    $('#source').innerHTML = state.sources.map((s) => `<option value="${s.source}">${SOURCE_LABELS[s.source] ?? s.source}${s.fires ? ` · ${fmtInt(s.fires)}` : ''}</option>`).join('');
+    $('#source').innerHTML = state.sources.map((s) => `<option value="${esc(s.source)}">${esc(SOURCE_LABELS[s.source] ?? s.source)}${s.fires ? ` · ${fmtInt(s.fires)}` : ''}</option>`).join('');
     await useSource(state.sources[0].source);
     $('#intro-eyebrow').textContent = `Saskatchewan · ${state.minYear} – ${state.maxYear}`;
     $('#intro-foot').textContent = `${fmtInt(state.all.length)} fires · ${fmtHa(state.all.reduce((s, f) => s + f.size_ha, 0))} ha · ${SOURCE_LABELS[state.source] ?? state.source}`;

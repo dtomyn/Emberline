@@ -334,7 +334,8 @@ export function parseText(input, { communities = [] } = {}) {
       if (key === 'http' || key === 'https') { rest.push(tok.raw); continue; }
     }
     if (tok.quoted) { rest.push(`"${tok.val}"`); continue; }
-    if (STOP.has(t)) continue;
+    // "at" is a stopword, except in "at least" / "at most" (handled with the comparisons below)
+    if (STOP.has(t) && !(t === 'at' && /^(least|most)$/i.test(toks[i + 1]?.val ?? ''))) continue;
 
     // near / around <community or coordinates>
     if (t === 'near' || t === 'around' || t === 'close') {
@@ -530,7 +531,14 @@ const row = (f) => ({
   size_ha: f.size_ha, size_class: f.cls, general_cause: f.general_cause, latitude: f.latitude, longitude: f.longitude,
   protection_zone: f.protection_zone ?? null, distance_km: f._km != null ? Math.round(f._km * 10) / 10 : null,
 });
-const csvCell = (v) => (v == null ? '' : /[",\n\r]/.test(String(v)) ? `"${String(v).replace(/"/g, '""')}"` : String(v));
+// Text starting with = + - @ (or tab/CR) runs as a formula in spreadsheet apps ("CSV injection"), so it
+// gets a leading apostrophe. Numbers are left alone: a longitude of -105.3 stays a number.
+const csvCell = (v) => {
+  if (v == null) return '';
+  let s = String(v);
+  if (typeof v === 'string' && /^[=+\-@\t\r]/.test(s)) s = `'${s}`;
+  return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+};
 
 export function toCSV(list, { near = true } = {}) {
   const cols = near ? EXPORT_COLUMNS : EXPORT_COLUMNS.filter((c) => c !== 'distance_km');

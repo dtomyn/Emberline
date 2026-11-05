@@ -1,21 +1,46 @@
 // Central configuration. Everything that points at an external service lives here.
 //
-// Every value can be overridden at runtime with a URL query parameter, e.g.
+// Some values can be overridden at runtime with a URL query parameter, e.g.
 //   ?activeFires=https://gis.saskatchewan.ca/arcgis/rest/services/<Folder>/<Service>/MapServer/0
 // which makes it easy to test a new endpoint during fire season without a redeploy.
+//
+// Overrides arrive in links anyone can craft, so each is confined: ?api= and ?data= must stay on
+// this site, and ?activeFires= must be a layer on the SPSA ArcGIS server. Anything else is ignored.
 
 const qs = new URLSearchParams(globalThis.location?.search ?? '');
+const REST_ROOT = 'https://gis.saskatchewan.ca/arcgis/rest/services';
+
+/** A same-origin URL for `value`, or null (blocks "https://elsewhere", "//elsewhere", "javascript:"). */
+export function sameOrigin(value, base = globalThis.location?.href) {
+  if (!value || !base) return null;
+  try {
+    const u = new URL(value, base);
+    return u.origin === new URL(base).origin ? value : null;
+  } catch { return null; }
+}
+
+/** A layer path relative to the SPSA REST root, or an https URL on that same server; otherwise null. */
+export function spsaLayer(value, root = REST_ROOT) {
+  if (!value) return null;
+  if (!/^[a-z][\w+.-]*:|^\/\//i.test(value)) return value; // relative path, resolved against the REST root
+  try {
+    const u = new URL(value), r = new URL(root);
+    return u.protocol === 'https:' && u.host === r.host && u.pathname.startsWith(r.pathname) ? u.href : null;
+  } catch { return null; }
+}
+
+const minutes = Number(qs.get('refresh'));
 
 export const CONFIG = {
   // Historical record comes from the server's SQLite-backed API. For static hosting without
   // the server, pass ?data=./data/fires.json (written by `npm run export:json`).
-  apiBase: qs.get('api') ?? './api',
-  staticDataUrl: qs.get('data'),
+  apiBase: sameOrigin(qs.get('api')) ?? './api',
+  staticDataUrl: sameOrigin(qs.get('data')),
 
   arcgis: {
     // Saskatchewan's public ArcGIS Enterprise (v11.5). Verified 2026-11 to return
     // f=geojson and to send Access-Control-Allow-Origin for browser requests.
-    restRoot: 'https://gis.saskatchewan.ca/arcgis/rest/services',
+    restRoot: REST_ROOT,
 
     // Folders the discovery crawler checks for an active-fire layer when none is configured.
     // "Wildfire" exists but is empty outside fire season; SPSA publishes there in season.
@@ -23,7 +48,7 @@ export const CONFIG = {
 
     // Full layer URL for active wildfire incidents (points or polygons).
     // Leave null to auto-discover; set it when SPSA publishes a layer for the season.
-    activeFiresLayer: qs.get('activeFires'),
+    activeFiresLayer: spsaLayer(qs.get('activeFires')),
 
     // Live SPSA layers that are always available (used for community proximity analysis)
     communityLayers: [
@@ -45,6 +70,6 @@ export const CONFIG = {
     bbox: [-110.1, 48.9, -101.2, 60.1],
   },
 
-  liveRefreshMinutes: Number(qs.get('refresh') ?? 5),
+  liveRefreshMinutes: Number.isFinite(minutes) && minutes >= 1 ? Math.min(minutes, 1440) : 5,
   requestTimeoutMs: 15000,
 };

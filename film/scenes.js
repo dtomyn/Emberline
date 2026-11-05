@@ -11,8 +11,9 @@ import { SOURCES } from '/src/provenance.js';
 
 const SASKATOON_HA = 22_800;      // as in main.js
 const PROVINCE_HA = 65_103_600;   // Saskatchewan's total area, 651,036 km² (Statistics Canada)
-const QUERY = 'lightning over 10,000 ha';
-const QUERY_SAID = 'lightning over ten thousand hectares';
+// "at least", not "over": the size filter is inclusive, so the words say exactly what is counted
+const QUERY = 'lightning at least 10,000 ha';
+const QUERY_SAID = 'lightning, at least ten thousand hectares';
 const pct = (a, b) => Math.round((a / (b || 1)) * 100);
 const pct1 = (a, b) => { const p = (a / (b || 1)) * 100; return p < 10 ? p.toFixed(1).replace(/\.0$/, '') : String(Math.round(p)); };
 const named = (f) => { const n = displayName(f); return n && n !== f.fire_id ? n : null; };
@@ -53,6 +54,8 @@ export function buildScenes(f, { url = '', provenance = null } = {}) {
   const found = search(state.all, mergeQuery(emptyQuery(), { ...parsed.patch, text: parsed.text }));
   const allHa = state.all.reduce((s, x) => s + x.size_ha, 0);
   const foundShare = (found.ha / allHa) * 100;
+  // The Search tab searches the whole record (every year back to the first), not just the years the opening counts
+  const recordFrom = years[0];
 
   // The ring summary, counted as src/sources-view.js counts its header
   const records = provenance
@@ -79,7 +82,7 @@ export function buildScenes(f, { url = '', provenance = null } = {}) {
       id: 'open', title: 'Every fire on record', shows: 'Cold open: in darkness, the record counts up; then a fire front burns through to the app.',
       lines: {
         a: `Since ${firstFull}, Saskatchewan has recorded ${sayCount(all.count)} wildfires.`,
-        b: `Together they burned ${sayHa(all.ha)} hectares, equal to ${provincePct} percent of the province.`,
+        b: `Together they burned ${sayHa(all.ha)} hectares, an area equal to ${provincePct} percent of the province, though some ground has burned more than once.`,
         c: 'This is every one of them.',
       },
       *run(f) {
@@ -249,7 +252,7 @@ export function buildScenes(f, { url = '', provenance = null } = {}) {
       id: 'search', title: 'Search in plain words', shows: `Search: "${QUERY}" typed in plain language becomes filters, and the results ignite in date order.`,
       lines: {
         a: `Search understands plain language. Type ${QUERY_SAID}, and the words become filters.`,
-        b: `${sayCount(found.count)} fires. Just ${pct1(found.count, state.all.length)} percent of the record, yet they burned ${pct1(found.ha, allHa)} percent of everything that burned.`,
+        b: `${sayCount(found.count)} fires. Just ${pct1(found.count, state.all.length)} percent of every fire on record since ${recordFrom}, yet they burned ${pct1(found.ha, allHa)} percent of everything that burned.`,
         c: 'Every result is on the map, the same query runs on the server, and it all exports to CSV or GeoJSON.',
       },
       *run(f) {
@@ -324,7 +327,10 @@ export function buildScenes(f, { url = '', provenance = null } = {}) {
         a: "Live mode reads the Saskatchewan Public Safety Agency's own map services and the national satellite feeds, and links every community inside the alert radius.",
         b: live.simulated
           ? 'Off-season, when nothing is published, it says so, and labels its simulation.'
-          : `Right now it is tracking ${sayCount(liveCount)} active fires and hotspots.`,
+          // Say what the feed actually holds: CWFIS gives satellite hotspots (detections), not fires
+          : live.source === 'cwfis'
+            ? `Right now, satellites see ${sayCount(liveCount)} hotspots in Saskatchewan from the last twenty four hours.`
+            : `Right now it is tracking ${sayCount(liveCount)} active fires.`,
       },
       *run(f) {
         yield* f.clickOn('[data-mode="live"]', { dur: 1.3 });

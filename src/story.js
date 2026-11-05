@@ -6,7 +6,7 @@
 // word in the documentary, and straight after `apply` in the click-through story. `hold` is how
 // many seconds the documentary lingers after the line ends. `sound` gives the film's crackling fire
 // (fireplace.js) the chapter's largest real fires, each heard as a pop, and how lively it should burn.
-import { summarize, byYear, fmtHa, fmtInt, fmtDate, MONTHS, seasonT, SEASON_START_DOY } from './data.js';
+import { summarize, byYear, fmtHa, fmtInt, fmtDate, MONTHS, seasonT, SEASON_START_DOY, esc } from './data.js';
 import { FULL_MONTHS, sayHa, sayCount, sayDate } from './narration.js';
 
 const SASK_AREA_HA = 65_103_600; // 651,036 km²
@@ -88,7 +88,7 @@ export function buildStory(fires, displayName, { storms = [], spread = [] } = {}
     {
       kicker: `The ${top.year} season`,
       title: `The year the north burned`,
-      body: `In ${top.year}, <b>${fmtInt(top.count)} fires</b> burned <b>${fmtHa(top.ha)} ha</b>, <b>${(top.ha / avgHa).toFixed(1)}×</b> the average season. The largest, <b>${displayName(topSummary.largest)}</b>, grew to ${fmtHa(topSummary.largest.size_ha)} ha on its own. Watch it unfold.`,
+      body: `In ${top.year}, <b>${fmtInt(top.count)} fires</b> burned <b>${fmtHa(top.ha)} ha</b>, <b>${(top.ha / avgHa).toFixed(1)}×</b> the average season. The largest, <b>${esc(displayName(topSummary.largest))}</b>, grew to ${fmtHa(topSummary.largest.size_ha)} ha on its own. Watch it unfold.`,
       say: `In ${top.year}, the north burned. ${sayCount(top.count)} fires swept across ${sayHa(top.ha)} hectares, ${(top.ha / avgHa).toFixed(1)} times an average season. ` +
         `${largestName ? `The largest, the ${largestName},` : 'The largest single fire'} grew to ${sayHa(topSummary.largest.size_ha)} hectares on its own. Watch the season unfold.`,
       hold: 6,
@@ -102,8 +102,8 @@ export function buildStory(fires, displayName, { storms = [], spread = [] } = {}
     },
     ...(sp ? [{
       kicker: 'True spread replay',
-      title: `Watching ${spName ? `the ${spName}` : 'a giant'} grow`,
-      body: `Satellites detected ${spName ? `the <b>${spName}</b>` : 'this fire'} <b>${fmtInt(sp.hotspot_count)} times</b> over <b>${spDays} days</b> as it grew to <b>${fmtHa(sp.area_ha)} ha</b>. The front is interpolated between real detections; the final scar is NBAC's mapped perimeter.`,
+      title: `Watching ${spName ? `the ${esc(spName)}` : 'a giant'} grow`,
+      body: `Satellites detected ${spName ? `the <b>${esc(spName)}</b>` : 'this fire'} <b>${fmtInt(sp.hotspot_count)} times</b> over <b>${spDays} days</b> as it grew to <b>${fmtHa(sp.area_ha)} ha</b>. The front is interpolated between real detections; the final scar is NBAC's mapped perimeter.`,
       say: `Satellites watched ${spName ? `the ${spName}` : 'one of the largest fires'} grow. Over ${spDays} days, they detected it ${sayCount(sp.hotspot_count)} times as it spread across ${sayHa(sp.area_ha)} hectares. ` +
         'The front you see is interpolated between those real detections.',
       hold: 8,

@@ -8,6 +8,8 @@
  * Live: the Canadian Lightning Detection Network's 10-minute flash density for the last 3 hours,
  *   from ECCC MSC GeoMet (WMS, public, CORS-enabled), looped as an animation over the province.
  */
+import { esc } from './data.js';
+
 const { ScatterplotLayer, PathLayer } = globalThis.deck ?? {};
 
 export const STORM_LINK_DAYS = 1;
@@ -253,7 +255,7 @@ export function createLiveLightning({ map, statusEl }) {
   map.on('data', (e) => { if (e.sourceId === 'cldn-lightning' && e.dataType === 'source') S.pending = false; });
   const W = 900, H = Math.round((W * (my(REGION.north) - my(REGION.south))) / (mx(REGION.east) - mx(REGION.west)));
   const url = (time) => `${GEOMET}?service=WMS&version=1.3.0&request=GetMap&layers=${LAYER}&styles=&crs=EPSG:3857` +
-    `&bbox=${mx(REGION.west)},${my(REGION.south)},${mx(REGION.east)},${my(REGION.north)}&width=${W}&height=${H}&format=image/png&transparent=true&time=${time}`;
+    `&bbox=${mx(REGION.west)},${my(REGION.south)},${mx(REGION.east)},${my(REGION.north)}&width=${W}&height=${H}&format=image/png&transparent=true&time=${encodeURIComponent(time)}`;
   const coords = [[REGION.west, REGION.north], [REGION.east, REGION.north], [REGION.east, REGION.south], [REGION.west, REGION.south]];
 
   function status(html) { if (statusEl) statusEl.innerHTML = html; }
@@ -282,12 +284,12 @@ export function createLiveLightning({ map, statusEl }) {
       S.active = active;
       const span = S.frames.length ? `${S.frames[0].time.slice(11, 16)}–${S.frames.at(-1).time.slice(11, 16)} UTC` : '';
       status(active
-        ? `<b>⚡ Lightning over Saskatchewan</b> in ${active} of ${S.frames.length} ten-minute frames (${span}).`
-        : `No lightning detected over Saskatchewan in the last 3 hours (${span}). The loop will show flashes when storms are active.`);
+        ? `<b>⚡ Lightning over Saskatchewan</b> in ${active} of ${S.frames.length} ten-minute frames (${esc(span)}).`
+        : `No lightning detected over Saskatchewan in the last 3 hours (${esc(span)}). The loop will show flashes when storms are active.`);
       if (S.on) attach();
     } catch (e) {
       S.error = e.message;
-      status(`Live lightning unavailable (${e.message}).`);
+      status(`Live lightning unavailable (${esc(e.message)}).`);
     }
   }
 

@@ -6,7 +6,7 @@
 // A director camera frames the burning area as it grows; fronts merging triggers a slow-motion beat.
 import { CONFIG } from './config.js';
 import { base64ToU16, unpackArrival, frontSegments, ringAreaHa } from './spread.js';
-import { fmtHa, fmtInt, fmtDate } from './data.js';
+import { fmtHa, fmtInt, fmtDate, esc } from './data.js';
 
 const { ScatterplotLayer, LineLayer, PathLayer, BitmapLayer, TextLayer } = deck;
 const $ = (s) => document.querySelector(s);
@@ -170,7 +170,8 @@ export function createSpreadMode({ map, toast, displayName, onOpen }) {
     const narrow = innerWidth < 900;
     // Keep the fire clear of the panels (on phones the controls sit in the bottom half)
     const padding = narrow ? { top: 70, bottom: Math.round(innerHeight * 0.5), left: 24, right: 24 } : { top: 110, bottom: 130, left: 320, right: 350 };
-    const c = map.cameraForBounds([[x0, y0], [x1, y1]], { padding });
+    // cameraForBounds gives undefined when the padding is wider than the canvas (a small window or pane)
+    const c = map.cameraForBounds([[x0, y0], [x1, y1]], { padding }) ?? map.cameraForBounds([[x0, y0], [x1, y1]]) ?? { center: [cx, cy], zoom: 7 };
     return { center: [c.center.lng ?? c.center[0], c.center.lat ?? c.center[1]], zoom: (c.zoom ?? 7) - 0.35 };
   }
 
@@ -424,9 +425,9 @@ export function createSpreadMode({ map, toast, displayName, onOpen }) {
       const i = (S.hotFrom ?? 0) + index;
       const h = F.hotspots;
       const when = dateAt(F, h.t[i]);
-      return { html: `<b>Satellite detection</b><br/>${h.sensor[i] ?? 'Sensor n/a'}${h.frp[i] != null ? ` · ${Math.round(h.frp[i])} MW` : ''}<br/><small>${fmtDay(when, { year: 'numeric' })} ${when.toISOString().slice(11, 16)} UTC</small>`, className: 'deck-tooltip' };
+      return { html: `<b>Satellite detection</b><br/>${esc(h.sensor[i] ?? 'Sensor n/a')}${h.frp[i] != null ? ` · ${Math.round(h.frp[i])} MW` : ''}<br/><small>${fmtDay(when, { year: 'numeric' })} ${when.toISOString().slice(11, 16)} UTC</small>`, className: 'deck-tooltip' };
     }
-    if (layer.id === 'spread-perimeter') return { html: `<b>${F.name}</b><br/>Final burned area ${fmtInt(F.area_ha)} ha<br/><small>NBAC perimeter (NRCan)</small>`, className: 'deck-tooltip' };
+    if (layer.id === 'spread-perimeter') return { html: `<b>${esc(F.name)}</b><br/>Final burned area ${fmtInt(F.area_ha)} ha<br/><small>NBAC perimeter (NRCan)</small>`, className: 'deck-tooltip' };
     return null;
   }
 
@@ -468,7 +469,7 @@ export function createSpreadMode({ map, toast, displayName, onOpen }) {
     const F = S.fire;
     $('#spread-kicker').textContent = `${F.year} · ${F.cause ?? 'Cause unknown'}${F.cause && !/undetermined/i.test(F.cause) ? ' cause' : ''}`;
     $('#spread-name').textContent = F.name;
-    const sens = Object.entries(F.sensors).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k} ${fmtInt(v)}`).join(' · ');
+    const sens = Object.entries(F.sensors).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${esc(k)} ${fmtInt(v)}`).join(' · ');
     const peakDate = dateAt(F, F.peak);
     const fmtIso = (d) => (d ? fmtDate(d) : 'n/a');
     $('#spread-facts').innerHTML = `
@@ -477,7 +478,7 @@ export function createSpreadMode({ map, toast, displayName, onOpen }) {
       <dt>Peak growth</dt><dd><b>+${fmtInt(F.daily[F.peak])} ha</b> on ${fmtDay(peakDate)}</dd>
       <dt>Fronts merged</dt><dd>${F.growth.merges.length ? `${F.growth.merges.length}×` : 'none'}</dd>
       <dt>Detections</dt><dd>${fmtInt(F.n)} <small>${sens}</small></dd>
-      ${F.cnfdb_fire_id ? `<dt>CNFDB</dt><dd><small>${F.cnfdb_fire_id}</small></dd>` : ''}`;
+      ${F.cnfdb_fire_id ? `<dt>CNFDB</dt><dd><small>${esc(F.cnfdb_fire_id)}</small></dd>` : ''}`;
     $('#spread-method').innerHTML = `The front is interpolated from <b>${fmtInt(F.n)}</b> real satellite detections and constrained to the final NBAC burned-area perimeter. Between detections its exact shape is estimated.`;
     drawChart();
   }
@@ -553,7 +554,7 @@ export function createSpreadMode({ map, toast, displayName, onOpen }) {
   function titleCard() {
     const F = S.fire;
     const el = $('#spread-title');
-    el.innerHTML = `<p class="eyebrow">True spread replay</p><h2>${F.name}</h2><p>${F.year} · ${fmtInt(F.area_ha)} ha · ${fmtInt(F.n)} satellite detections</p>`;
+    el.innerHTML = `<p class="eyebrow">True spread replay</p><h2>${esc(F.name)}</h2><p>${esc(F.year)} · ${fmtInt(F.area_ha)} ha · ${fmtInt(F.n)} satellite detections</p>`;
     el.classList.remove('show'); void el.offsetWidth; el.classList.add('show');
     clearTimeout(titleCard.timer);
     titleCard.timer = setTimeout(() => el.classList.remove('show'), 4300); // even if the animation was throttled
@@ -581,10 +582,10 @@ export function createSpreadMode({ map, toast, displayName, onOpen }) {
     const max = Math.max(...S.list.map((f) => f.area_ha));
     let lastYear = null;
     el.innerHTML = S.list.filter((f) => !q || `${nameOf(f)} ${f.year}`.toLowerCase().includes(q)).map((f) => {
-      const head = f.year !== lastYear ? `<div class="sl-year">${f.year}</div>` : '';
+      const head = f.year !== lastYear ? `<div class="sl-year">${esc(f.year)}</div>` : '';
       lastYear = f.year;
-      return `${head}<button class="sl-row${S.fire?.id === f.id ? ' on' : ''}" data-id="${f.id}">
-        <span class="sl-name">${nameOf(f)}</span><span class="sl-ha">${fmtHa(f.area_ha)} ha</span>
+      return `${head}<button class="sl-row${S.fire?.id === f.id ? ' on' : ''}" data-id="${esc(f.id)}">
+        <span class="sl-name">${esc(nameOf(f))}</span><span class="sl-ha">${fmtHa(f.area_ha)} ha</span>
         <i style="--w:${(Math.sqrt(f.area_ha / max) * 100).toFixed(1)}%"></i></button>`;
     }).join('') || '<p class="muted small">No match.</p>';
     el.querySelectorAll('.sl-row').forEach((b) => b.addEventListener('click', () => { open(b.dataset.id); history.replaceState(null, '', `#spread/${b.dataset.id}`); }));

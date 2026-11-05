@@ -41,6 +41,9 @@ and nothing to break.
 
 - ES modules throughout. `src/` modules that the server imports (`config.js`, `data.js`,
   `services/live.js`, `narration.js`, `spread.js`) must also run in Node, so browser globals are guarded.
-- Every external endpoint lives in `src/config.js` and can be overridden by query string.
+- Every external endpoint lives in `src/config.js` and can be overridden by query string (confined to
+  this site or the SPSA server, see the decision log).
+- Text from data or services reaches HTML only through `esc()` (`src/data.js`). No inline scripts or
+  `on…=` attributes: the CSP in `server/http.mjs` blocks them.
 - Parsers and loaders have tests (`npm test`); any change to them adds tests.
 - Visual changes are checked in a real browser.

@@ -101,6 +101,13 @@ export function fmtHa(n) {
 }
 export const fmtDate = (iso) => new Date(iso + 'T12:00:00Z').toLocaleDateString('en-CA', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
 
+/**
+ * Escape text for HTML (element content and quoted attributes). Every string that came from a
+ * database, a live service or the URL must pass through this before it reaches innerHTML or a
+ * deck.gl tooltip: SPSA layer names, community names and CNFDB fire names are third-party text.
+ */
+export const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+
 /** A readable fire name from a CNFDB id or name ("Shoe fire"), or the id when there is none. */
 export function displayName(f) {
   if (!f) return '';
