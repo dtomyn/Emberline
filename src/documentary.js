@@ -16,6 +16,7 @@
  * button mutes it, and the choice is remembered.
  */
 import { CONFIG } from './config.js';
+import { esc } from './data.js';
 import { storyLines, cueTime } from './narration.js';
 import { createFireplace } from './fireplace.js';
 
@@ -212,12 +213,12 @@ export function createDocumentary({ app, getStory, showChapter, onStart, onStop,
     el.innerHTML = kind === 'title'
       ? `<p class="eyebrow">Emberline presents</p>
          <h1>A Province of Fire</h1>
-         <p class="doc-sub">${story.opening.replace(/^Emberline presents\.\s*/, '')}</p>
+         <p class="doc-sub">${esc(story.opening.replace(/^Emberline presents\.\s*/, ''))}</p>
          ${dataset().simulated ? '<p class="doc-sim">SIMULATED DATA · synthetic demo dataset, not the real record</p>' : ''}
-         <p class="doc-disclose">${voice.long}<br/>Every figure is computed from ${dataset().label}.</p>`
+         <p class="doc-disclose">${esc(voice.long)}<br/>Every figure is computed from ${esc(dataset().label)}.</p>`
       : `<p class="eyebrow">The end</p>
          <h1>Your turn</h1>
-         <p class="doc-sub">${story.closing}</p>
+         <p class="doc-sub">${esc(story.closing)}</p>
          <div class="doc-end"><button class="cta" id="doc-explore">Explore the map</button><button class="ghost" id="doc-again">↻ Watch again</button></div>`;
     el.hidden = false;
     el.classList.remove('out'); void el.offsetWidth; el.classList.add('in');

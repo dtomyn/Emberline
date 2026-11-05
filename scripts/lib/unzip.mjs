@@ -28,9 +28,11 @@ export function readZip(path) {
       read() {
         const lNameLen = buf.readUInt16LE(localOffset + 26), lExtraLen = buf.readUInt16LE(localOffset + 28);
         const start = localOffset + 30 + lNameLen + lExtraLen;
+        if (start + compSize > buf.length) throw new Error(`Zip entry ${name} runs past the end of the file`);
         const data = buf.subarray(start, start + compSize);
         if (method === 0) return data;
-        if (method === 8) return inflateRawSync(data);
+        // Never inflate past the declared size, so a corrupt or hostile archive can't exhaust memory
+        if (method === 8) return inflateRawSync(data, { maxOutputLength: Math.max(1, size) });
         throw new Error(`Unsupported zip compression method ${method} for ${name}`);
       },
     });

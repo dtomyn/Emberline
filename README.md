@@ -63,6 +63,9 @@ npm run make:voice   # optional: Kokoro narration for the film (needs the local 
 npm start            # http://localhost:5173
 ```
 
+The server listens on this machine only. To open it from another device on your network, start it
+with `HOST=0.0.0.0 npm start` (it then accepts any `Host` header; only do this on a network you trust).
+
 No network, or just want to try it quickly? `npm run load:mock` loads a synthetic dataset instead.
 
 ### Data is never committed

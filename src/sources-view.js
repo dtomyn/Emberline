@@ -10,9 +10,8 @@
 // /api/provenance and the catalogue in src/provenance.js; nothing here is written by hand.
 import { CONFIG } from './config.js';
 import { SOURCES, GROUPS, TRUTH, sourceYears, coverageOf, funnel, citation, describePing } from './provenance.js';
-import { fmtInt, fmtHa } from './data.js';
+import { fmtInt, fmtHa, esc } from './data.js';
 
-const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const TAU = Math.PI * 2;
 const SCARS = 7;           // the largest fire seasons get a scar
 const BURN_MS = 2600;      // front from pith to bark

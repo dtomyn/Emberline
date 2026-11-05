@@ -73,6 +73,17 @@ Re-check these before relying on them. Government endpoints change.
   `requestAnimationFrame` (about 1 fps), so judge smoothness in a normal browser.
 - Commit messages end with the Co-Authored-By trailer the session provides.
 
+## Security rules (review of 2026-11-05)
+
+- **Escape everything** from data or services with `esc()` from `src/data.js` before `innerHTML` or a deck.gl
+  tooltip `html` (names from SPSA/ArcGIS, CNFDB, NBAC, error messages, labels). Prefer `textContent`.
+- The server (`server/http.mjs` helpers) sends a CSP: no inline `<script>`, no `on…=` attributes, scripts only
+  from `'self'` and `https://unpkg.com`. Upgrading MapLibre or deck.gl means recomputing the SRI `integrity`
+  hashes in `index.html` (`openssl dgst -sha384 -binary file | openssl base64 -A`).
+- URL overrides are confined in `src/config.js`: `?api=`/`?data=` same-origin, `?activeFires=` on the SPSA server.
+- Loopback bind (127.0.0.1 and ::1) by default, foreign `Host` headers get 421, GET/HEAD only, 500s carry no detail.
+  `/api/live?refresh` is throttled to once a minute. Tests: `tests/security.test.mjs`.
+
 ## Spread mode (True Spread Replay, idea 1 in IDEAS.md): built
 
 `npm run load:spread` → `spread_fires` / `spread_hotspots`. Shared algorithms live in `src/spread.js`
