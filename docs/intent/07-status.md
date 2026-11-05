@@ -13,6 +13,7 @@ As of 2026-11-05.
 - Sources: Read the rings (every source, request, licence, live check)
 - Living Terrain and Sky: 3D terrain and day/night lighting (smoke plumes not yet)
 - Explainer film for YouTube, rendered by `npm run film`
+- Social images (LinkedIn cover, Viva Engage banner), rendered by `npm run make:social` with figures from the record
 - Security hardening (2026-11-05): escaping, CSP, loopback bind, Host check, SRI, throttling
 
 ## Unfinished or unverified
