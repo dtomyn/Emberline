@@ -68,6 +68,40 @@ jobs:
           path: data/raw
           key: emberline-raw-${{ github.run_id }}
 
+      # Narration: the Kokoro voice (af_heart, as in the film) made here, after the data has loaded,
+      # so each clip's text matches the figures this build computed. If it fails, the site still
+      # deploys and the documentary uses the browser voice (and says so).
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Restore the Kokoro model
+        id: kokoro-cache
+        uses: actions/cache@v4
+        with:
+          path: data/kokoro
+          key: kokoro-model-v1.0
+
+      - name: Download the Kokoro model
+        if: steps.kokoro-cache.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p data/kokoro
+          base=https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0
+          curl -fsSL -o data/kokoro/kokoro-v1.0.onnx "$base/kokoro-v1.0.onnx"
+          curl -fsSL -o data/kokoro/voices-v1.0.bin "$base/voices-v1.0.bin"
+          # The same files as the IRISIdeas install
+          sha256sum -c - <<'EOF'
+          7d5df8ecf7d4b1878015a32686053fd0eebe2bc377234608764cc0ef3636a6c5  data/kokoro/kokoro-v1.0.onnx
+          bca610b8308e8d99f32e6fe4197e7ec01679264efed0cac9140fe9c29f1fbf7d  data/kokoro/voices-v1.0.bin
+          EOF
+
+      - name: Make the narration (Kokoro)
+        continue-on-error: true
+        run: |
+          python -m venv data/kokoro-venv
+          data/kokoro-venv/bin/pip install -q -r scripts/kokoro-requirements.txt
+          KOKORO_PYTHON="$PWD/data/kokoro-venv/bin/python" KOKORO_DIR="$PWD/data/kokoro" npm run make:voice
+
       - name: Build the static site
         run: npm run build:pages
 
