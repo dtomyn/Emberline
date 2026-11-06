@@ -117,3 +117,13 @@ Each entry: the decision, the alternatives, and why. Add new entries at the bott
   (CNFDB records it reports, its public GIS layers) and the authority the app defers to for current
   incidents and warnings. Wording should be plain and jargon-free; accuracy still has to survive a
   close look.
+
+### A static GitHub Pages build beside the server (2026-11-06)
+- **What:** `npm run build:pages` writes `dist/`: the front end plus a JSON snapshot of each API route the app
+  reads. `<meta name="emberline-static">` switches `apiUrl()` in `src/config.js` to those files; Live and
+  source pings go straight from the browser. `.github/workflows/pages.yml` loads the data in CI and deploys it.
+- **Alternatives:** hosting the Node server (Render, Fly.io, a VM); committing JSON to a `gh-pages` branch.
+- **Why:** the owner wanted a free, always-on public copy *and* to keep the server version. The data stays out
+  of git (it is built by the load scripts in CI and lives only in the Pages deployment), so the
+  no-data-in-GitHub rule holds. The server stays the reference: `npm start` is unchanged, and the API routes
+  and the snapshot files come from the same `server/db.mjs` queries.

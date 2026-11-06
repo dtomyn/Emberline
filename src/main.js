@@ -1,5 +1,5 @@
 // Emberline: app shell, map, animation loop and UI wiring.
-import { CONFIG } from './config.js';
+import { CONFIG, apiUrl } from './config.js';
 import {
   CAUSES, SEASON_START_DOY, SEASON_END_DOY, enrich, lowerBound, summarize, byYear, weeklySeries,
   tToDate, tToISO, seasonT, yearStartT, fmtHa, fmtInt, fmtDate, EPOCH, DAY, displayName, esc,
@@ -59,8 +59,8 @@ const seasonDoy = (t) => t - yearStartT(tToDate(t).getUTCFullYear()) + 1;
 // ---------------------------------------------------------------- data
 async function fetchSources() {
   if (CONFIG.staticDataUrl) return [{ source: 'static', fires: null }];
-  const res = await fetch(`${CONFIG.apiBase}/sources`);
-  if (!res.ok) throw new Error('The Emberline API is not reachable. Start it with "npm start".');
+  const res = await fetch(apiUrl('/sources'));
+  if (!res.ok) throw new Error(CONFIG.staticSite ? 'This copy of Emberline was published without its data.' : 'The Emberline API is not reachable. Start it with "npm start".');
   return (await res.json()).sources;
 }
 
@@ -70,7 +70,7 @@ async function fetchFires(source) {
     if (!res.ok) throw new Error(`Could not load ${CONFIG.staticDataUrl}`);
     return enrich(await res.json());
   }
-  const res = await fetch(`${CONFIG.apiBase}/fires?source=${encodeURIComponent(source)}`);
+  const res = await fetch(apiUrl('/fires', { source }));
   if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error ?? `HTTP ${res.status}`);
   const { columns: c } = await res.json();
   return enrich(c.fire_id.map((id, i) => ({
@@ -360,7 +360,10 @@ async function refreshLive(force = false) {
   $('#live-source').innerHTML = 'Connecting to SPSA services…';
   let body;
   try {
-    const res = await fetch(`${CONFIG.apiBase}/live${force ? '?refresh' : ''}`);
+    // The static site has no server: go straight to the browser fallback below
+    const url = apiUrl('/live');
+    if (!url) throw new Error('static');
+    const res = await fetch(force ? `${url}?refresh` : url);
     if (!res.ok) throw new Error();
     body = await res.json();
   } catch {

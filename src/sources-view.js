@@ -8,8 +8,8 @@
 //   - live feeds sit in the bark (the living layer), and everything else in a halo outside it.
 // Opening it burns a front outward from the pith through every year. All counts come from
 // /api/provenance and the catalogue in src/provenance.js; nothing here is written by hand.
-import { CONFIG } from './config.js';
-import { SOURCES, GROUPS, TRUTH, sourceYears, coverageOf, funnel, citation, describePing } from './provenance.js';
+import { CONFIG, apiUrl } from './config.js';
+import { SOURCES, GROUPS, TRUTH, sourceYears, coverageOf, funnel, citation, describePing, pingSource } from './provenance.js';
 import { fmtInt, fmtHa, esc } from './data.js';
 
 const TAU = Math.PI * 2;
@@ -42,7 +42,7 @@ export function createSourcesView(app) {
   async function loadInfo() {
     if (!CONFIG.staticDataUrl) {
       try {
-        const res = await fetch(`${CONFIG.apiBase}/provenance`);
+        const res = await fetch(apiUrl('/provenance'));
         if (res.ok) return res.json();
       } catch { /* fall through to what the browser already has */ }
     }
@@ -543,7 +543,13 @@ export function createSourcesView(app) {
     S.pings[src.id] = { pending: true };
     renderCard();
     let out;
-    try { out = await (await fetch(`${CONFIG.apiBase}/provenance/ping/${src.id}`)).json(); } catch (err) { out = { ok: false, ms: 0, error: err.message }; }
+    const url = apiUrl(`/provenance/ping/${src.id}`);
+    try {
+      // The static site has no server, so the browser asks the source itself; a source that sends
+      // no CORS headers then can't be read, which the card says rather than calling it down
+      out = url ? await (await fetch(url)).json() : await pingSource(src);
+      if (!url && !out.ok && !out.status) out.error = `${out.error}; this source may not allow browser requests (CORS)`;
+    } catch (err) { out = { ok: false, ms: 0, error: err.message }; }
     S.pings[src.id] = out;
     S.pulses.push({ id: src.id, at: performance.now(), ok: out.ok });
     if (S.selected === src.id) renderCard();

@@ -12,6 +12,13 @@
       "runtimeExecutable": "node",
       "runtimeArgs": ["server/index.mjs"],
       "port": 5174
+    },
+    {
+      "name": "emberline-pages",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["scripts/preview-pages.mjs", "5180"],
+      "port": 5180,
+      "url": "http://localhost:5180"
     }
   ]
 }

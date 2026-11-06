@@ -15,7 +15,7 @@
  * pop for each of the chapter's largest real fires. It ducks under every spoken line; the flame
  * button mutes it, and the choice is remembered.
  */
-import { CONFIG } from './config.js';
+import { CONFIG, apiUrl } from './config.js';
 import { esc } from './data.js';
 import { storyLines, cueTime } from './narration.js';
 import { createFireplace } from './fireplace.js';
@@ -47,7 +47,7 @@ export function createDocumentary({ app, getStory, showChapter, onStart, onStop,
   async function loadManifest() {
     if (manifest || CONFIG.staticDataUrl) return manifest ?? { clips: {} };
     try {
-      const res = await fetch(`${CONFIG.apiBase}/voice`);
+      const res = await fetch(apiUrl('/voice'));
       manifest = res.ok ? await res.json() : { clips: {} };
     } catch { manifest = { clips: {} }; }
     return manifest;
@@ -56,7 +56,7 @@ export function createDocumentary({ app, getStory, showChapter, onStart, onStop,
   const clipFor = (text) => manifest?.clips?.[text] ?? null;
   function fetchClip(clip) {
     if (!blobs.has(clip.file)) {
-      blobs.set(clip.file, fetch(`${CONFIG.apiBase}/voice/${clip.file}`)
+      blobs.set(clip.file, fetch(apiUrl(`/voice/${clip.file}`))
         .then((r) => (r.ok ? r.blob() : Promise.reject(new Error(`HTTP ${r.status}`))))
         .then((b) => URL.createObjectURL(b))
         .catch(() => { blobs.delete(clip.file); return null; }));

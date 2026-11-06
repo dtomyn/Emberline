@@ -173,6 +173,17 @@ real detections, which the panel and About dialog say. Keep that wording if you 
 - "Replay these" / "Explore in 3D" set `state.searchFilter` (a compiled predicate) in `main.js`; the
   "Showing a search" panel clears or edits it. The hash `#search?…` holds the query.
 
+## Static GitHub Pages build: built
+
+- `npm run build:pages` → gitignored `dist/`: front end + each API route saved as a file (`api/fires/<source>.json`,
+  `api/spread/<id>.json`, …). `<meta name="emberline-static">` makes `apiUrl()` (`src/config.js`) map routes to files.
+  **Every front-end API call goes through `apiUrl()`**; a new route needs a snapshot in `scripts/build-pages.mjs`,
+  or `apiUrl` returning null for it (as `/live`, `/search`, `/provenance/ping` do) and a browser fallback.
+- `.github/workflows/pages.yml` loads the data in CI (downloads in the Actions cache) and deploys `dist/`; never commit
+  it or push it to a branch. `npm run preview:pages` serves `dist/` under `/Wildfire-Sask/` like Pages.
+- The CSP goes in as a `<meta>` (`scripts/lib/pages.mjs`); `frame-ancestors` can't, so it's dropped there.
+- Live and source pings run in the browser there; every live source sent CORS headers when checked (2026-11-06).
+
 ## Open threads / ideas not yet done
 
 The backlog, with verified public data sources and a suggested order, is in

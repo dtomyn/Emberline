@@ -1,6 +1,6 @@
 # 7. Status and direction
 
-As of 2026-11-05.
+As of 2026-11-06.
 
 ## Built
 
@@ -14,12 +14,14 @@ As of 2026-11-05.
 - Living Terrain and Sky: 3D terrain and day/night lighting (smoke plumes not yet)
 - Explainer film for YouTube, rendered by `npm run film`
 - Security hardening (2026-11-05): escaping, CSP, loopback bind, Host check, SRI, throttling
+- Static GitHub Pages build (`npm run build:pages`, `.github/workflows/pages.yml`), beside the server version
 
 ## Unfinished or unverified
 
 - Small-screen layout works but is unpolished.
 - Pronunciation of place names in the film is unverified by ear beyond the known fixes.
 - No configured SPSA active-fire layer yet; auto-discovery will find one when SPSA publishes it.
+- The Pages workflow has not run on GitHub yet; Pages must be switched to "GitHub Actions" in the repo settings.
 
 ## Direction
 
