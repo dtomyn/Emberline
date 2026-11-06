@@ -16,7 +16,8 @@ and a reviewer always sees the current data rather than a stale snapshot.
 
 - `node:sqlite` (built into Node 22.13+), no native modules.
 - Historical data reaches the front end **through the server API**, not through static files
-  in the repo. (`npm run export:json` exists for static hosting, but its output stays outside the repo.)
+  in the repo. The static Pages build (`npm run build:pages`) saves the API's answers as files in gitignored
+  `dist/`, built by the Pages workflow from the load scripts; they are deployed, never committed.
 - Each loader replaces only its own source, so several sources live side by side.
 
 *Why:* one queryable store with an audit trail (`import_runs`) and no install step.

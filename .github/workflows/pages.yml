@@ -1,0 +1,88 @@
+# Publishes the static build of Emberline to GitHub Pages.
+#
+# The data is never committed: this job downloads it with the same load scripts you run locally,
+# builds dist/ (scripts/build-pages.mjs) and uploads it as a Pages artifact. Downloads are kept in the
+# Actions cache, so only the first run fetches every satellite hotspot day (about one to two hours, since
+# CWFIS answers one day per query); later runs fetch only what is new.
+#
+# One-time setup: Settings → Pages → Build and deployment → Source: "GitHub Actions".
+name: Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      spread:
+        description: Build True Spread Replays (NBAC perimeters + hotspots; slow without a cache)
+        type: boolean
+        default: true
+      refresh:
+        description: Re-download the CNFDB instead of using the cached copy
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 340
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - run: npm test
+
+      # Restores the newest cache; a new one is saved even if a load fails or times out, so a slow
+      # first run is never wasted
+      - name: Restore downloads
+        uses: actions/cache/restore@v4
+        with:
+          path: data/raw
+          key: emberline-raw-${{ github.run_id }}
+          restore-keys: emberline-raw-
+
+      - name: Load the CNFDB (Saskatchewan fire points)
+        run: npm run load:cnfdb -- ${{ inputs.refresh && '--refresh' || '' }}
+
+      - name: Load True Spread Replays (NBAC + hotspots)
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.spread }}
+        timeout-minutes: 300 # leaves time to save the cache if a first run is very slow
+        run: npm run load:spread
+
+      - name: Save downloads
+        if: ${{ always() }}
+        uses: actions/cache/save@v4
+        with:
+          path: data/raw
+          key: emberline-raw-${{ github.run_id }}
+
+      - name: Build the static site
+        run: npm run build:pages
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

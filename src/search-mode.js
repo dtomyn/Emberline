@@ -187,7 +187,7 @@ export function createSearchMode({ map, toast, getFires, getCommunities, getSpre
     $('#sx-dir').textContent = r.query.dir === 'asc' ? '↑' : '↓';
     $('#sx-dir').title = r.query.dir === 'asc' ? 'Ascending (click to flip)' : 'Descending (click to flip)';
     renderList();
-    $('#sx-api').hidden = Boolean(CONFIG.staticDataUrl);
+    $('#sx-api').hidden = Boolean(CONFIG.staticDataUrl || CONFIG.staticSite); // no server to answer /api/search
   }
 
   function renderHistogram() {

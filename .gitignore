@@ -55,3 +55,6 @@ tmp/
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# Static GitHub Pages build (npm run build:pages): holds data, published by the workflow, never committed
+dist/
