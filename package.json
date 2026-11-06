@@ -13,6 +13,7 @@
     "load:spread": "node scripts/load-spread.mjs",
     "make:voice": "node scripts/make-voice.mjs",
     "film": "node scripts/make-film.mjs",
+    "make:social": "node scripts/make-social.mjs",
     "load:mock": "node scripts/generate-mock.mjs && node scripts/load-csv.mjs data/raw/spsa_fires_mock.csv --source mock",
     "export:json": "node scripts/export-json.mjs",
     "build:pages": "node scripts/build-pages.mjs",

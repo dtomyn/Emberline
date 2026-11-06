@@ -158,6 +158,13 @@ real detections, which the panel and About dialog say. Keep that wording if you 
   summary from `/api/provenance`, counted like `sources-view.js`. `sources.locate({ year | source })` gives
   the cursor a scar or a source bore on the rings canvas.
 
+## Social images (`npm run make:social`): built
+
+- `social/figures.js` computes the figures (real sources only, mock throws) over the continuous record: from the first
+  year with 100+ fires, as the app and film do. The old hand-made images added the 9,070 mock fires to CNFDB; never type figures into `social/*.html`.
+- `social/render.py` captures the app (UI hidden, hex, golden sky) and fills each `[data-fig]`. The app's CSP blocks
+  Playwright's `wait_for_function`, so it polls with `page.evaluate`; the animated map never reports idle, so it waits a fixed time.
+
 ## Search mode: built
 
 - `src/search.js` is the one query model (parser, filters, facets, URL params, CSV/GeoJSON). The browser runs it
