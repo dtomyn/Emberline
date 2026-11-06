@@ -71,7 +71,7 @@ Re-check these before relying on them. Government endpoints change.
 - ES modules throughout. `src/` modules must also run in Node, since the server imports
   `services/live.js`, `data.js` and `config.js`. Guard browser globals.
 - Match the surrounding style: small focused modules, explanatory header comments, no frameworks.
-- Tests: `npm test` (`node --test tests/`). Add tests for any parser or loader change.
+- Tests: `npm test` (`node --test "tests/*.test.mjs"`; a bare folder argument fails on Node 24, which CI uses). Add tests for any parser or loader change.
 - Verify visual changes in a real browser. Note that the desktop preview pane throttles
   `requestAnimationFrame` (about 1 fps), so judge smoothness in a normal browser.
 - Commit messages end with the Co-Authored-By trailer the session provides.
