@@ -189,6 +189,8 @@ real detections, which the panel and About dialog say. Keep that wording if you 
 - `.github/workflows/pages.yml` loads the data in CI (downloads in the Actions cache) and deploys `dist/`; never commit
   it or push it to a branch. `npm run preview:pages` serves `dist/` under `/Wildfire-Sask/` like Pages.
 - The CSP goes in as a `<meta>` (`scripts/lib/pages.mjs`); `frame-ancestors` can't, so it's dropped there.
+- CI makes the Kokoro narration itself (`make:voice` after the loads) from `scripts/kokoro-requirements.txt` and the
+  kokoro-onnx v1.0 model files, SHA-256 pinned to the IRISIdeas copies. Bump those pins together with IRISIdeas.
 - Live and source pings run in the browser there; every live source sent CORS headers when checked (2026-11-06).
 
 ## Open threads / ideas not yet done

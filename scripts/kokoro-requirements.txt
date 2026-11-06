@@ -1,0 +1,8 @@
+# Python packages for scripts/kokoro-voice.py ("npm run make:voice"), pinned to the versions in the
+# IRISIdeas venv (C:\DevSource\IRISIdeas\.venv) so the Pages build speaks with the same voice.
+kokoro-onnx==0.6.1
+onnxruntime==1.31.1
+espeakng-loader==0.2.4
+phonemizer==3.4.0
+numpy==2.5.4
+soundfile==0.14.0

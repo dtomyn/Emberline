@@ -127,3 +127,12 @@ Each entry: the decision, the alternatives, and why. Add new entries at the bott
   of git (it is built by the load scripts in CI and lives only in the Pages deployment), so the
   no-data-in-GitHub rule holds. The server stays the reference: `npm start` is unchanged, and the API routes
   and the snapshot files come from the same `server/db.mjs` queries.
+
+### Kokoro narration made in the Pages build (2026-11-06)
+- **What:** `pages.yml` installs `scripts/kokoro-requirements.txt` (the IRISIdeas venv's versions, pinned),
+  fetches the kokoro-onnx v1.0 model files (SHA-256 checked against the IRISIdeas copies, cached) and runs
+  `npm run make:voice` before `build:pages`. A failure there doesn't stop the deploy.
+- **Alternatives:** uploading locally made clips (a release asset or a branch).
+- **Why:** the published film used the browser voice, which the owner found far worse than the Kokoro voice
+  on YouTube. Clips are keyed by exact line text, which includes figures from the data, so clips made from a
+  local database could drift from what CI loads; making them in CI keeps them matched and keeps data out of git.

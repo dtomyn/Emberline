@@ -308,7 +308,7 @@ en-US phonemes with hand fixes for names it reads wrongly from their spelling (S
 La Ronge, Île-à-la-Crosse). Years are spelled out before synthesis ("nineteen eighty-one").
 
 `npm run make:voice` uses the IRISIdeas install by default (`C:\DevSource\IRISIdeas\.venv`). Elsewhere, set
-`KOKORO_PYTHON` to a Python with `kokoro-onnx` and `soundfile` installed and `KOKORO_DIR` to a folder with
+`KOKORO_PYTHON` to a Python with `scripts/kokoro-requirements.txt` installed (the IRISIdeas versions, pinned) and `KOKORO_DIR` to a folder with
 `kokoro-v1.0.onnx` and `voices-v1.0.bin`. Clips are matched to lines by their exact text, so when the data
 changes, any line without a matching clip falls back to the browser's speech voice. The title card and the film's
 control bar always say which voice is speaking, and that it is synthetic.
@@ -376,14 +376,16 @@ What changes without a server:
 | Live | The browser asks SPSA, CWFIS and GeoMet itself (all send CORS headers, checked 2026-11-06). No snapshots are stored |
 | "Ask the source now" | The browser pings the source itself, so a source without CORS headers would show as not answering |
 | Search "API link" | Hidden (there is no `/api/search`); CSV and GeoJSON export still work |
-| ▶ Watch narration | Kokoro clips if the build had them, otherwise the browser voice (labelled) |
+| ▶ Watch narration | Kokoro clips (CI makes them), otherwise the browser voice (labelled) |
 | Security headers | Only the CSP, as a `<meta>`; Pages can't send `frame-ancestors` or the other headers |
 
 **Publishing.** `.github/workflows/pages.yml` runs on every push to `main` (and by hand from the Actions
 tab): tests, `load:cnfdb`, `load:spread`, `build:pages`, then deploys `dist/` as a Pages artifact. The data
 is never committed; downloads are kept in the Actions cache, so the first run takes an hour or two (one
 hotspot day per CWFIS query) and later runs are quick. Turn it on once under Settings → Pages → Source:
-**GitHub Actions**. CI has no Kokoro, so the published film uses the browser voice.
+**GitHub Actions**. CI also runs `make:voice` after the loads, with the pinned Kokoro packages and the same
+model files (checked by SHA-256, cached), so the published film speaks with the Kokoro voice and every clip
+matches the figures that build computed. If that step fails, the site still deploys with the browser voice (labelled).
 
 For the record alone, `npm run export:json` writes `data/fires.json`; open `index.html?data=<url-to>/fires.json`.
 
