@@ -31,11 +31,17 @@ export function spsaLayer(value, root = REST_ROOT) {
 
 const minutes = Number(qs.get('refresh'));
 
+// The static build (`npm run build:pages`, for GitHub Pages) adds <meta name="emberline-static"> to
+// index.html. There is no server then: ./api holds JSON snapshots of the API, and the browser asks
+// live services itself.
+const staticSite = Boolean(globalThis.document?.querySelector?.('meta[name="emberline-static"]'));
+
 export const CONFIG = {
-  // Historical record comes from the server's SQLite-backed API. For static hosting without
-  // the server, pass ?data=./data/fires.json (written by `npm run export:json`).
+  // Historical record comes from the server's SQLite-backed API, or its static snapshot (see apiUrl).
+  // A single JSON file also works without either: ?data=./data/fires.json (`npm run export:json`).
   apiBase: sameOrigin(qs.get('api')) ?? './api',
   staticDataUrl: sameOrigin(qs.get('data')),
+  staticSite,
 
   arcgis: {
     // Saskatchewan's public ArcGIS Enterprise (v11.5). Verified 2026-11 to return
@@ -88,3 +94,17 @@ export const CONFIG = {
   liveRefreshMinutes: Number.isFinite(minutes) && minutes >= 1 ? Math.min(minutes, 1440) : 5,
   requestTimeoutMs: 15000,
 };
+
+/**
+ * The URL of an API route. On the server: "/fires", { source: 'cnfdb' } → ./api/fires?source=cnfdb.
+ * On the static site, the snapshot file the build wrote for it: ./api/fires/cnfdb.json. Files that
+ * already have an extension (voice clips) keep their name. Routes the static build can't snapshot
+ * (/live, /search, /provenance/ping) return null there, and callers fall back to the browser.
+ */
+export function apiUrl(path, params = {}, { staticSite: isStatic = CONFIG.staticSite, base = CONFIG.apiBase } = {}) {
+  const values = Object.values(params).filter((v) => v != null && v !== '');
+  if (!isStatic) return `${base}${path}${values.length ? `?${new URLSearchParams(params)}` : ''}`;
+  if (/^\/(live|search|provenance\/ping)\b/.test(path)) return null;
+  const file = `${path}${values.map((v) => `/${encodeURIComponent(v)}`).join('')}`;
+  return `${base}${file}${/\.\w+$/.test(file) ? '' : '.json'}`;
+}

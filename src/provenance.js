@@ -333,7 +333,7 @@ export function readPing(kind, body, headers = {}) {
 
 const UNITS = { nbac: 'SK perimeters', 'spsa-communities': 'communities', 'cwfis-24h': 'SK detections', 'cwfis-m3': 'perimeters' };
 
-/** Asks a source for its state right now. Runs on the server, so CORS never decides the answer. */
+/** Asks a source for its state right now. Runs on the server, so CORS never decides the answer (on the static site it runs in the browser, where CORS can). */
 export async function pingSource(src, { timeoutMs = 20000 } = {}) {
   if (!src?.ping) return { ok: false, error: 'not checkable' };
   const { kind } = src.ping;

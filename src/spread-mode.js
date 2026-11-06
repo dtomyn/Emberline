@@ -4,7 +4,7 @@
 // Layers, bottom to top: charred scar → glowing burn field → moving front (coloured by spread rate)
 // → hotspot flares → satellite "pings" (vertical beams) → embers drifting downwind → final perimeter.
 // A director camera frames the burning area as it grows; fronts merging triggers a slow-motion beat.
-import { CONFIG } from './config.js';
+import { CONFIG, apiUrl } from './config.js';
 import { base64ToU16, unpackArrival, frontSegments, ringAreaHa } from './spread.js';
 import { fmtHa, fmtInt, fmtDate, esc } from './data.js';
 
@@ -61,7 +61,7 @@ export function createSpreadMode({ map, toast, displayName, onOpen }) {
   async function loadList() {
     if (CONFIG.staticDataUrl) { S.available = false; renderList(); return []; }
     try {
-      const res = await fetch(`${CONFIG.apiBase}/spread`);
+      const res = await fetch(apiUrl('/spread'));
       S.list = res.ok ? await res.json() : [];
     } catch { S.list = []; }
     S.available = S.list.length > 0;
@@ -89,7 +89,7 @@ export function createSpreadMode({ map, toast, displayName, onOpen }) {
     $('#spread-loading').classList.add('show');
     let raw;
     try {
-      const res = await fetch(`${CONFIG.apiBase}/spread/${encodeURIComponent(id)}`);
+      const res = await fetch(apiUrl(`/spread/${encodeURIComponent(id)}`));
       if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error ?? `HTTP ${res.status}`);
       raw = await res.json();
     } catch (err) {
