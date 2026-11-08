@@ -128,6 +128,20 @@ Each entry: the decision, the alternatives, and why. Add new entries at the bott
   no-data-in-GitHub rule holds. The server stays the reference: `npm start` is unchanged, and the API routes
   and the snapshot files come from the same `server/db.mjs` queries.
 
+### Licences checked before publishing on Pages (2026-11-08)
+- **What:** the map's attribution is always expanded (`compact: false`) and adds the NRCan/OGL, SPSA and ECCC
+  credits from `CONFIG.credits`. The terrain credit names Mapzen, USGS, NOAA and NRCan. The About dialog gives
+  each licence's full statement and says Emberline is not affiliated with or endorsed by SPSA, NRCan, ECCC or
+  the Government of Saskatchewan. `CONFIG.scene.basemapKey` puts a CARTO key on every basemap request. The repo
+  has an MIT `LICENSE` for the code only.
+- **Findings:** CNFDB, NBAC and CWFIS hotspots are under the OGL – Canada, which allows the redistribution the
+  Pages snapshots do. GeoMet lightning is under ECCC's own end-use licence ("Data Source: Environment and Climate
+  Change Canada"), not the OGL. The SPSA services state no licence, but SPSA's public viewer publishes the
+  Government of Saskatchewan Standard Unrestricted Use Data Licence v2.0, so the card names it as the likely one.
+  SPSA data is fetched live, never stored. CARTO's Basemap Terms (updated 2026-09-29) need a free key
+  (5M tiles a month non-commercial) and a credit that is "not hidden, faded or behind a click".
+- **Why:** the owner asked whether the data may be published on GitHub Pages. It may, with these credits.
+
 ### Kokoro narration made in the Pages build (2026-11-06)
 - **What:** `pages.yml` installs `scripts/kokoro-requirements.txt` (the IRISIdeas venv's versions, pinned),
   fetches the kokoro-onnx v1.0 model files (SHA-256 checked against the IRISIdeas copies, cached) and runs

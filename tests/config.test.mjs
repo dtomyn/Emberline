@@ -44,3 +44,25 @@ test('the Sources view asks the same endpoints the app uses', () => {
   assert.ok(by('cldn').ping.url.startsWith(`${CONFIG.geomet.wmsUrl}?`));
   assert.ok(by('cldn').ping.url.includes(CONFIG.geomet.lightningLayer));
 });
+
+test('the CARTO key goes on basemap URLs only, and only when set', async () => {
+  const { withBasemapKey } = await import('../src/config.js');
+  const style = 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json';
+  assert.equal(withBasemapKey(style, ''), style, 'no key: unchanged');
+  assert.equal(withBasemapKey(style, 'abc'), `${style}?key=abc`);
+  assert.equal(withBasemapKey('https://tiles.basemaps.cartocdn.com/v/1/vectortiles/carto.streets/v2/{z}/{x}/{y}.mvt', 'abc'),
+    'https://tiles.basemaps.cartocdn.com/v/1/vectortiles/carto.streets/v2/{z}/{x}/{y}.mvt?key=abc', 'templates kept');
+  assert.equal(withBasemapKey(`${style}?key=own`, 'abc'), `${style}?key=own`, 'an existing key is kept');
+  for (const other of [CONFIG.scene.terrainTiles, 'https://evilbasemaps.cartocdn.com.example/x', 'http://basemaps.cartocdn.com/x', './api/sources.json']) {
+    assert.equal(withBasemapKey(other, 'abc'), other, `${other} untouched`);
+  }
+});
+
+test('the map credits name each licence the data asks for', () => {
+  const c = CONFIG.credits;
+  assert.match(c.record, /Open Government Licence – Canada/);
+  assert.match(c.lightning, /ECCC/);
+  assert.match(c.basemap, /OpenStreetMap.*CARTO/);
+  assert.match(c.spsa, /Saskatchewan/);
+  assert.match(c.terrain, /USGS/);
+});

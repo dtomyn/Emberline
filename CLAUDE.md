@@ -136,8 +136,16 @@ real detections, which the panel and About dialog say. Keep that wording if you 
   live there, they come from `/api/provenance`. Add an entry whenever you add a source.
 - `src/sources-view.js` draws it as a fire-scarred tree cross-section. "Ask the source now" goes through
   `/api/provenance/ping/<id>`, which only fetches the catalogue's fixed URLs.
-- Licences: NRCan and ECCC data are listed under the Open Government Licence – Canada. The SPSA ArcGIS services
-  state no licence (`copyrightText` empty, checked 2026-11-03); the card says "None stated" rather than guessing.
+- Licences (checked 2026-11-08): NRCan data is under the OGL – Canada. ECCC GeoMet is under ECCC's own Data Services
+  End-use Licence (credit "Data Source: Environment and Climate Change Canada"). The SPSA services state no licence;
+  the card names the Government of Saskatchewan Standard Unrestricted Use Data Licence v2.0 that SPSA's public viewer
+  publishes, and says the service itself states none.
+- Map credits live in `CONFIG.credits` and the attribution control stays **expanded** (`compact: false`): CARTO's
+  Basemap Terms forbid a credit "behind a click". CARTO also wants a key on every basemap URL: `CONFIG.scene.basemapKey`
+  (added by `withBasemapKey` in `transformRequest`). The About dialog has the full statements and the non-endorsement line.
+- The credits are one string in a strip under the timeline (bottom-left control, `styles.css`). The style's own source
+  attributions are stripped in `transformStyle` so they don't repeat. When the strip wraps, `--credits-extra` lifts the
+  timeline, panels and captions; new bottom-anchored UI should add `var(--credits-extra, 0px)` too.
 
 ## Explainer film (`npm run film`): built
 

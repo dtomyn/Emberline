@@ -85,15 +85,46 @@ export const CONFIG = {
 
   // What the map is drawn on: CARTO's Dark Matter vector style (OpenStreetMap data) and the
   // public Terrarium elevation tiles on AWS Open Data (no key), used for 3D terrain and hillshade.
+  // CARTO's Basemap Terms (2026-09) require your own API key on every basemaps.cartocdn.com URL
+  // (style, tiles, glyphs, sprites). Keys are free for non-commercial use (5M tiles a month) at
+  // https://carto.com/basemaps/apikey/. It is a public browser key: put it in basemapKey.
+  // Vector styles still load without one (checked 2026-11-08), but CARTO may watermark or cut them off.
   scene: {
     basemapStyle: 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json',
+    basemapKey: '',
     terrainTiles: 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png',
     terrainPage: 'https://registry.opendata.aws/terrain-tiles/',
+  },
+
+  // Credits on the map itself (MapLibre attribution control, kept expanded: CARTO's terms say the credit
+  // can't sit behind a click). All of them are fixed here rather than taken from the style's sources, which
+  // MapLibre only lists once their tiles have drawn. They are short to fit a phone; the About dialog gives
+  // the full statements each licence asks for (OGL – Canada, ECCC end-use licence, Government of Saskatchewan).
+  credits: {
+    basemap: '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors © <a href="https://carto.com/attribution/" target="_blank" rel="noopener">CARTO</a>',
+    record: 'Fire data: <a href="https://cwfis.cfs.nrcan.gc.ca/" target="_blank" rel="noopener">NRCan</a>, <a href="https://open.canada.ca/en/open-government-licence-canada" target="_blank" rel="noopener">Open Government Licence – Canada</a>',
+    spsa: 'Communities: SPSA, <a href="https://gisappl.saskatchewan.ca/Html5Ext/Resources/GOS_Standard_Unrestricted_Use_Data_Licence_v2.0.pdf" target="_blank" rel="noopener">Gov. of Saskatchewan licence</a>',
+    lightning: 'Lightning: <a href="https://eccc-msc.github.io/open-data/licence/readme_en/" target="_blank" rel="noopener">ECCC</a>',
+    terrain: 'Terrain: <a href="https://github.com/tilezen/joerd/blob/master/docs/attribution.md" target="_blank" rel="noopener">Mapzen, USGS, NOAA, NRCan</a>',
   },
 
   liveRefreshMinutes: Number.isFinite(minutes) && minutes >= 1 ? Math.min(minutes, 1440) : 5,
   requestTimeoutMs: 15000,
 };
+
+/**
+ * `url` with the CARTO basemap key added, if it is a basemaps.cartocdn.com URL (style, tiles, glyphs,
+ * sprites) and a key is set. Anything else comes back unchanged. MapLibre calls this for every request.
+ */
+export function withBasemapKey(url, key = CONFIG.scene.basemapKey) {
+  if (!key || typeof url !== 'string') return url;
+  try {
+    const u = new URL(url);
+    if (u.protocol !== 'https:' || !/(^|\.)basemaps\.cartocdn\.com$/.test(u.hostname) || u.searchParams.has('key')) return url;
+    u.searchParams.set('key', key);
+    return u.href.replace(/%7B/g, '{').replace(/%7D/g, '}'); // keep {z}/{x}/{y} templates intact
+  } catch { return url; }
+}
 
 /**
  * The URL of an API route. On the server: "/fires", { source: 'cnfdb' } → ./api/fires?source=cnfdb.

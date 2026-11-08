@@ -1,5 +1,5 @@
 // Emberline: app shell, map, animation loop and UI wiring.
-import { CONFIG, apiUrl } from './config.js';
+import { CONFIG, apiUrl, withBasemapKey } from './config.js';
 import {
   CAUSES, SEASON_START_DOY, SEASON_END_DOY, enrich, lowerBound, summarize, byYear, weeklySeries,
   tToDate, tToISO, seasonT, yearStartT, fmtHa, fmtInt, fmtDate, EPOCH, DAY, displayName, esc,
@@ -135,10 +135,30 @@ function applyFilters({ keepTime = true } = {}) {
 // ---------------------------------------------------------------- map
 const map = new maplibregl.Map({
   container: 'map',
-  style: CONFIG.scene.basemapStyle,
   center: [-104, 52.5], zoom: 3.3, pitch: 0, bearing: 0,
-  minZoom: 3, maxZoom: 12, maxPitch: 70, attributionControl: { compact: true },
+  minZoom: 3, maxZoom: 12, maxPitch: 70, attributionControl: false,
+  transformRequest: (url) => ({ url: withBasemapKey(url) }), // CARTO wants its key on every basemap URL
 });
+// The basemap's credit is in CONFIG.credits (always shown), so the style's own copy is dropped, not shown twice
+map.setStyle(CONFIG.scene.basemapStyle, {
+  transformStyle: (_, next) => ({
+    ...next, sources: Object.fromEntries(Object.entries(next.sources).map(([id, { attribution, ...src }]) => [id, src])),
+  }),
+});
+// Expanded, never collapsed to an (i) button: the basemap terms need the credit visible without a click.
+// One string, because MapLibre sorts separate credits by length; this keeps the basemap's first.
+const { credits } = CONFIG;
+map.addControl(new maplibregl.AttributionControl({
+  compact: false,
+  customAttribution: [credits.basemap, credits.record, credits.spsa, credits.lightning, credits.terrain].join(' | '),
+}), 'bottom-left');
+// The credits sit in a strip under the timeline (styles.css). One line fits the 16 px below it; when they
+// wrap (narrow screens), lift the timeline, panels and captions by the extra height so nothing covers them.
+const creditsEl = map.getContainer().querySelector('.maplibregl-ctrl-bottom-left');
+const liftForCredits = () => document.documentElement.style.setProperty('--credits-extra', `${Math.max(0, Math.ceil(creditsEl.offsetHeight) - 16)}px`);
+new ResizeObserver(liftForCredits).observe(creditsEl);
+addEventListener('resize', liftForCredits);
+liftForCredits();
 map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), 'bottom-right');
 const overlay = new MapboxOverlay({ interleaved: false, layers: [], getTooltip });
 map.addControl(overlay);
