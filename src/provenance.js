@@ -15,6 +15,16 @@ import { CONFIG } from './config.js';
 
 const { arcgis, cwfis, geomet, scene } = CONFIG;
 const OGL = { name: 'Open Government Licence – Canada', url: 'https://open.canada.ca/en/open-government-licence-canada' };
+// The SPSA ArcGIS services state no licence (copyrightText empty, checked 2026-11-03). SPSA's public
+// wildfire viewer (gisappl.saskatchewan.ca, viewer=wfmpublic) publishes this one, so the card names it
+// as the likely licence and says so, rather than presenting it as the services' own statement.
+const GOS = {
+  name: 'Government of Saskatchewan Standard Unrestricted Use Data Licence (Version 2.0), as published with SPSA\'s public viewer (the service itself states none)',
+  url: 'https://gisappl.saskatchewan.ca/Html5Ext/Resources/GOS_Standard_Unrestricted_Use_Data_Licence_v2.0.pdf',
+};
+// MSC GeoMet data come under ECCC's own licence (OGL-like: commercial use allowed, attribution
+// "Data Source: Environment and Climate Change Canada"), not the OGL itself.
+const ECCC = { name: 'Environment and Climate Change Canada Data Services End-use Licence', url: 'https://eccc-msc.github.io/open-data/licence/readme_en/' };
 const CNFDB_ZIP = 'https://cwfis.cfs.nrcan.gc.ca/downloads/nfdb/fire_pnt/current_version/NFDB_point_txt.zip';
 const GEOMET = geomet.wmsUrl;
 const CARTO_STYLE = scene.basemapStyle;
@@ -102,7 +112,7 @@ export const SOURCES = [
     gives: 'Cities, towns, northern hamlets and settlements. They power the Live alert radius and "nearest community" on every fire card.',
     how: `Layers ${arcgis.communityLayers.map((l) => l.url.split('/').pop()).sort().join(', ')} of SPSA/Communities, as GeoJSON.`,
     request: arcgis.communityLayers.map((l) => `GET ${arcgis.restRoot}/${l.url}/query?where=1=1&outFields=UMNM,UMTYPE&f=geojson`).join('\n'),
-    page: `${arcgis.restRoot}/SPSA/Communities/MapServer`, licence: null,
+    page: `${arcgis.restRoot}/SPSA/Communities/MapServer`, licence: GOS,
     ping: { kind: 'arcgis-count', urls: arcgis.communityLayers.map((l) => countUrl(l.url)) },
   },
   {
@@ -112,7 +122,7 @@ export const SOURCES = [
     gives: 'Active incidents and their status in Live mode, when SPSA publishes a seasonal layer.',
     how: `Tier 1 of Live. A configured layer wins; otherwise Emberline crawls the ${arcgis.discoveryFolders.map((f) => `"${f}"`).join(' and ')} folders for one. The Wildfire folder is empty off-season.`,
     request: `GET ${arcgis.restRoot}/${arcgis.discoveryFolders[0]}?f=json\nGET <discovered layer>/query?where=1=1&outFields=*&f=geojson`,
-    page: `${arcgis.restRoot}/${arcgis.discoveryFolders[0]}`, licence: null,
+    page: `${arcgis.restRoot}/${arcgis.discoveryFolders[0]}`, licence: GOS,
     ping: { kind: 'arcgis-folder', url: `${arcgis.restRoot}/${arcgis.discoveryFolders[0]}?f=json` },
   },
   {
@@ -142,7 +152,7 @@ export const SOURCES = [
     gives: 'The last 3 hours of lightning flash density over the province, looped in Live mode.',
     how: `WMS layer ${geomet.lightningLayer}, one frame per 10-minute step of its time dimension, fetched once as images.`,
     request: `GET ${GEOMET}?service=WMS&version=1.3.0&request=GetMap&layers=${geomet.lightningLayer}&crs=EPSG:3857&time=<step>&…`,
-    page: 'https://eccc-msc.github.io/open-data/msc-geomet/readme_en/', licence: OGL,
+    page: 'https://eccc-msc.github.io/open-data/msc-geomet/readme_en/', licence: ECCC,
     ping: { kind: 'wms-time', url: `${GEOMET}?service=WMS&version=1.3.0&request=GetCapabilities&layer=${geomet.lightningLayer}` },
   },
   {
@@ -162,8 +172,8 @@ export const SOURCES = [
     owner: 'CARTO, drawing OpenStreetMap data (© OpenStreetMap contributors).',
     gives: 'Roads, lakes, places and labels under the fires, darkened further so the fire glows.',
     request: `GET ${CARTO_STYLE}`,
-    how: 'MapLibre vector style with CARTO vector tiles of OpenStreetMap, loaded as published.',
-    page: 'https://carto.com/basemaps', licence: { name: 'OSM data: ODbL; CARTO basemap terms', url: 'https://www.openstreetmap.org/copyright' },
+    how: 'MapLibre vector style with CARTO vector tiles of OpenStreetMap, loaded as published, with the site\'s CARTO key on every request when one is set (CONFIG.scene.basemapKey). Credit shown on the map, always expanded.',
+    page: 'https://carto.com/basemaps', licence: { name: 'CARTO Basemap Terms (free non-commercial key); OSM data under the ODbL', url: 'https://carto.com/legal/basemap-terms/' },
     ping: { kind: 'get', url: CARTO_STYLE },
   },
   {
@@ -173,7 +183,7 @@ export const SOURCES = [
     gives: '3D terrain and hillshade relief, lit by the real sun.',
     how: 'raster-dem source, Terrarium encoding, up to zoom 12.',
     request: `GET ${scene.terrainTiles}`,
-    page: scene.terrainPage, licence: { name: 'Per-source attribution (see the registry page)', url: 'https://github.com/tilezen/joerd/blob/master/docs/attribution.md' },
+    page: scene.terrainPage, licence: { name: 'Per-source attribution: Mapzen; USGS (SRTM, GMTED2010); NOAA (ETOPO1); Canada data under the OGL – Canada', url: 'https://github.com/tilezen/joerd/blob/master/docs/attribution.md' },
     ping: { kind: 'get', url: TERRARIUM_TILE },
   },
 

@@ -14,7 +14,6 @@ import { solarTerms, sunAt, sunAltitude, atLocalTime, localClock } from './sun.j
 import { CONFIG } from './config.js';
 
 const TERRARIUM = CONFIG.scene.terrainTiles;
-const TERRAIN_ATTRIBUTION = `Terrain: <a href="${CONFIG.scene.terrainPage}">Terrarium tiles</a> (AWS Open Data)`;
 const CYCLE_MS = 48000;               // one full day/night every 48 s in cycle mode
 // Covers the whole view at the minimum zoom; edges are feathered so no box ever shows
 const SHADE = { w: 192, h: 128, west: -172, east: -38, south: 18, north: 78, feather: 14 };
@@ -47,9 +46,9 @@ export function createScene({ map, getDate, getMode }) {
     if (S.ready || S.installing) return;
     S.installing = true; // adding sources fires 'styledata' synchronously; don't re-enter
     try {
-      const dem = { type: 'raster-dem', tiles: [TERRARIUM], tileSize: 256, encoding: 'terrarium', maxzoom: 12, attribution: TERRAIN_ATTRIBUTION };
+      const dem = { type: 'raster-dem', tiles: [TERRARIUM], tileSize: 256, encoding: 'terrarium', maxzoom: 12 }; // credited in CONFIG.credits.terrain
       if (!map.getSource('emberline-dem')) map.addSource('emberline-dem', dem);
-      if (!map.getSource('emberline-hillshade-dem')) map.addSource('emberline-hillshade-dem', { ...dem, attribution: undefined });
+      if (!map.getSource('emberline-hillshade-dem')) map.addSource('emberline-hillshade-dem', dem);
       if (!map.getSource('emberline-daylight')) {
         map.addSource('emberline-daylight', {
           type: 'canvas', canvas, animate: true,

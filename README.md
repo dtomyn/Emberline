@@ -387,6 +387,17 @@ hotspot day per CWFIS query) and later runs are quick. Turn it on once under Set
 model files (checked by SHA-256, cached), so the published film speaks with the Kokoro voice and every clip
 matches the figures that build computed. If that step fails, the site still deploys with the browser voice (labelled).
 
+**Basemap key.** CARTO's Basemap Terms ask every site to use its own API key, free for non-commercial use
+(up to 5 million tiles a month): request one at <https://carto.com/basemaps/apikey/> and put it in
+`CONFIG.scene.basemapKey` in `src/config.js`. It is a public browser key, sent as `?key=` on every
+basemaps.cartocdn.com request. Without one the vector basemap still loads today, but CARTO may watermark or
+stop keyless tiles.
+
+**Licences.** Publishing the snapshots is allowed. NRCan's CNFDB, NBAC and hotspots are under the Open
+Government Licence – Canada, which permits redistribution with attribution. Everything else (SPSA, CWFIS live,
+GeoMet, CARTO, terrain) is fetched by the browser from its publisher. The map's credit line stays expanded, as
+CARTO's terms require, and the About dialog gives each licence's full attribution statement.
+
 For the record alone, `npm run export:json` writes `data/fires.json`; open `index.html?data=<url-to>/fires.json`.
 
 ## Notes and caveats
@@ -397,5 +408,10 @@ For the record alone, `npm run export:json` writes `data/fires.json`; open `inde
   interpolated between detections.
 - CNFDB coverage before 1981 is sparse, so the app's default range starts at the first year with
   100+ recorded fires.
-- Basemap © OpenStreetMap contributors © CARTO. Fire data © Natural Resources Canada
-  (Open Government Licence – Canada) and the Saskatchewan Public Safety Agency.
+- Basemap © OpenStreetMap contributors © CARTO. Fire data © Natural Resources Canada, containing
+  information licensed under the Open Government Licence – Canada. Lightning: Data Source: Environment and
+  Climate Change Canada (ECCC Data Services End-use Licence). SPSA layers: the SPSA services state no
+  licence; SPSA's public viewer publishes the Government of Saskatchewan Standard Unrestricted Use Data
+  Licence (Version 2.0). Terrain: Mapzen, USGS, NOAA, NRCan. Emberline is not affiliated with or endorsed
+  by any of these agencies.
+- Code: MIT (see `LICENSE`). The licence covers the code, not the data.
