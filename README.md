@@ -71,6 +71,19 @@ with `HOST=0.0.0.0 npm start` (it then accepts any `Host` header; only do this o
 
 No network, or just want to try it quickly? `npm run load:mock` loads a synthetic dataset instead.
 
+### Dev container (VS Code)
+
+Open the folder in VS Code and choose **Reopen in Container** (needs Docker and the Dev Containers
+extension). `.devcontainer/` gives you Node 24 (as CI uses) and Python 3.12 with the pinned Kokoro
+packages in a venv (`KOKORO_PYTHON` and `KOKORO_DIR` are set). Then run the quick-start commands as usual;
+port 5173 is forwarded, so `http://localhost:5173` opens on your machine. For the narration, run
+`bash .devcontainer/kokoro-model.sh` (the model files, about 330 MB, SHA-256 checked) before `npm run make:voice`.
+
+`data/` lives in your checkout, so loaded data survives a container rebuild. The film and social images
+(`npm run film`, `npm run make:social`) render with headless Edge and Direct3D, so run those on Windows.
+In GitHub Codespaces the forwarded URL sends a foreign `Host` header, which the server refuses (421); use
+`HOST=0.0.0.0 npm start` there.
+
 ### Data is never committed
 
 `data/` is gitignored: the SQLite database, raw downloads and any exports. Anyone who clones
