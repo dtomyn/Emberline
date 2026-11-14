@@ -150,3 +150,13 @@ Each entry: the decision, the alternatives, and why. Add new entries at the bott
 - **Why:** the published film used the browser voice, which the owner found far worse than the Kokoro voice
   on YouTube. Clips are keyed by exact line text, which includes figures from the data, so clips made from a
   local database could drift from what CI loads; making them in CI keeps them matched and keeps data out of git.
+
+### VS Code dev container (2026-11-13)
+- **What:** `.devcontainer/` uses the `javascript-node:1-24-bookworm` image (Node 24, as CI) with the Python 3.12
+  feature. `post-create.sh` installs `scripts/kokoro-requirements.txt` into `~/.venvs/kokoro` (outside the
+  workspace, so a Linux venv never mixes with the Windows checkout); `kokoro-model.sh` fetches the model files
+  into `data/kokoro` on request, with the same SHA-256 pins as `pages.yml`. Ports 5173 and 5180 are forwarded.
+- **Alternatives:** a Dockerfile with everything baked in; installing Playwright and Edge for the film.
+- **Why:** the owner asked for a devcontainer. It adds no npm dependencies and no build step, the server keeps
+  its loopback bind (VS Code forwards from inside the container), and data stays in gitignored `data/`. The film
+  and social renders use Edge with Direct3D, so they stay on Windows.

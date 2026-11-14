@@ -1,0 +1,43 @@
+// VS Code dev container for Emberline: Node 24 (as CI uses) and Python 3.12 for the Kokoro narration.
+//
+// There are no npm dependencies, so the container only needs the runtimes. post-create.sh installs the
+// pinned Kokoro packages (scripts/kokoro-requirements.txt) into a venv outside the workspace;
+// kokoro-model.sh fetches the model files into gitignored data/kokoro on request (about 330 MB).
+// Data stays in data/ in the workspace, so it survives rebuilds and is never committed.
+//
+// The server binds to loopback inside the container; VS Code's port forwarding connects from inside,
+// so http://localhost:5173 works on the host without HOST=0.0.0.0.
+{
+  "name": "Emberline",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:1-24-bookworm",
+  "features": {
+    "ghcr.io/devcontainers/features/python:1": {
+      "version": "3.12",
+      "installTools": false
+    },
+    "ghcr.io/devcontainers/features/github-cli:1": {}
+  },
+  "containerEnv": {
+    "KOKORO_PYTHON": "/home/node/.venvs/kokoro/bin/python",
+    "KOKORO_DIR": "${containerWorkspaceFolder}/data/kokoro"
+  },
+  "forwardPorts": [5173, 5180],
+  "portsAttributes": {
+    "5173": { "label": "Emberline (npm start)", "onAutoForward": "notify" },
+    "5180": { "label": "Pages preview (npm run preview:pages)", "onAutoForward": "notify" }
+  },
+  "postCreateCommand": "bash .devcontainer/post-create.sh",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "github.vscode-github-actions"
+      ],
+      "settings": {
+        "files.eol": "\n",
+        "terminal.integrated.defaultProfile.linux": "bash"
+      }
+    }
+  },
+  "remoteUser": "node"
+}
